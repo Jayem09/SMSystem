@@ -11,18 +11,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-bg">
+    <div className="min-h-screen w-full bg-surface">
       {/* Top Nav */}
-      <nav className="w-full border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
-        <span className="text-lg font-semibold text-text">SMSystem</span>
+      <nav className="w-full border-b border-edge px-6 py-3 flex items-center justify-between bg-surface">
+        <span className="text-lg font-semibold text-ink">SMSystem</span>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-medium text-text">{user?.name}</p>
-            <p className="text-xs text-text-muted capitalize">{user?.role}</p>
+            <p className="text-sm font-medium text-ink">{user?.name}</p>
+            <p className="text-xs text-ink-muted capitalize">{user?.role}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 text-sm border border-border rounded-md text-text-secondary hover:bg-bg-hover transition-colors cursor-pointer"
+            className="px-3 py-1.5 text-sm border border-edge rounded-md text-ink-secondary hover:bg-surface-hover transition-colors cursor-pointer"
           >
             Logout
           </button>
@@ -31,8 +31,8 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="w-full px-6 py-8 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-semibold text-text mb-1">Dashboard</h1>
-        <p className="text-sm text-text-secondary mb-8">Welcome back, {user?.name}.</p>
+        <h1 className="text-2xl font-semibold text-ink mb-1">Dashboard</h1>
+        <p className="text-sm text-ink-secondary mb-8">Welcome back, {user?.name}.</p>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -42,19 +42,19 @@ export default function Dashboard() {
             { label: 'Customers', value: '--' },
             { label: 'Orders', value: '--' },
           ].map((stat) => (
-            <div key={stat.label} className="border border-border rounded-lg p-4">
-              <p className="text-xs text-text-muted uppercase tracking-wide mb-1">{stat.label}</p>
-              <p className="text-2xl font-semibold text-text">{stat.value}</p>
+            <div key={stat.label} className="border border-edge rounded-lg p-4 bg-surface">
+              <p className="text-xs text-ink-muted uppercase tracking-wide mb-1">{stat.label}</p>
+              <p className="text-2xl font-semibold text-ink">{stat.value}</p>
             </div>
           ))}
         </div>
 
         {/* Profile */}
-        <div className="border border-border rounded-lg">
-          <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold text-text">Your Profile</h2>
+        <div className="border border-edge rounded-lg bg-surface">
+          <div className="px-4 py-3 border-b border-edge">
+            <h2 className="text-sm font-semibold text-ink">Your Profile</h2>
           </div>
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-edge">
             {[
               { label: 'Name', value: user?.name },
               { label: 'Email', value: user?.email },
@@ -62,8 +62,8 @@ export default function Dashboard() {
               { label: 'Joined', value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : '--' },
             ].map((row) => (
               <div key={row.label} className="px-4 py-3 flex justify-between items-center">
-                <span className="text-sm text-text-secondary">{row.label}</span>
-                <span className="text-sm font-medium text-text capitalize">{row.value}</span>
+                <span className="text-sm text-ink-secondary">{row.label}</span>
+                <span className="text-sm font-medium text-ink capitalize">{row.value}</span>
               </div>
             ))}
           </div>
