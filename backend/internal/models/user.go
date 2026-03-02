@@ -3,8 +3,6 @@ package models
 import (
 	"time"
 )
-
-// User represents a system user with role-based access.
 type User struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"size:255;not null" json:"name"`
