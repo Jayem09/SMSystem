@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
@@ -21,10 +22,21 @@ type Config struct {
 
 // Load reads configuration from .env file and environment variables.
 func Load() *Config {
-	// Try loading .env from backend dir, then project root
-	if err := godotenv.Load(); err != nil {
-		if err := godotenv.Load("../.env"); err != nil {
-			log.Println("Warning: No .env file found, using environment variables")
+	// Try loading .env from:
+	// 1. Current working directory
+	// 2. Parent directory
+	// 3. Executable directory (robust for bundled apps like Tauri)
+	paths := []string{".env", "../.env"}
+
+	if execPath, err := os.Executable(); err == nil {
+		paths = append(paths, filepath.Join(filepath.Dir(execPath), ".env"))
+		paths = append(paths, filepath.Join(filepath.Dir(execPath), "../Resources/.env"))
+	}
+
+	for _, path := range paths {
+		if err := godotenv.Load(path); err == nil {
+			log.Printf("Loaded configuration from %s", path)
+			break
 		}
 	}
 

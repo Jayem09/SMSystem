@@ -13,7 +13,6 @@ interface Product {
   description: string;
   price: number;
   stock: number;
-  image_url: string;
   category_id: number;
   brand_id: number;
   category?: Category;
@@ -37,7 +36,6 @@ export default function Products() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [brandId, setBrandId] = useState('');
 
@@ -69,7 +67,7 @@ export default function Products() {
   const openCreate = () => {
     setEditing(null);
     setName(''); setDescription(''); setPrice(''); setStock('0');
-    setImageUrl(''); setCategoryId(''); setBrandId('');
+    setCategoryId(''); setBrandId('');
     setError('');
     setModalOpen(true);
   };
@@ -80,7 +78,6 @@ export default function Products() {
     setDescription(p.description);
     setPrice(String(p.price));
     setStock(String(p.stock));
-    setImageUrl(p.image_url);
     setCategoryId(String(p.category_id));
     setBrandId(String(p.brand_id));
     setError('');
@@ -95,7 +92,6 @@ export default function Products() {
       description,
       price: parseFloat(price),
       stock: parseInt(stock),
-      image_url: imageUrl,
       category_id: parseInt(categoryId),
       brand_id: parseInt(brandId),
     };
@@ -179,7 +175,6 @@ export default function Products() {
             required
             options={brands.map((b) => ({ value: b.id, label: b.name }))}
           />
-          <FormField label="Image URL" value={imageUrl} onChange={setImageUrl} placeholder="https://..." />
           <button type="submit" className="w-full mt-2 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-md cursor-pointer">
             {editing ? 'Update' : 'Create'}
           </button>

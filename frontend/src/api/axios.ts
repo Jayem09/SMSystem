@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+// If running inside Tauri (Mac/Windows), point to the sidecar backend URL
+// Otherwise, use relative path (which relies on Vite proxy in dev)
+const isTauri = typeof window !== 'undefined' && 
+  (window.origin.startsWith('tauri://') || window.origin.startsWith('https://tauri.localhost'));
+const baseURL = isTauri ? 'http://localhost:8080' : '';
+
 const api = axios.create({
-  baseURL: '',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

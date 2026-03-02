@@ -38,9 +38,15 @@ func main() {
 	// Setup Gin router
 	router := gin.Default()
 
-	// CORS configuration for React dev server
+	// CORS configuration
+	// Allow frontend origins (Dev and Production Tauri)
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:1420"},
+		AllowOrigins: []string{
+			"http://localhost:5173",
+			"http://localhost:1420",   // Default Tauri dev port
+			"tauri://localhost",       // Tauri production (Win/Linux)
+			"https://tauri.localhost", // Tauri production (macOS)
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

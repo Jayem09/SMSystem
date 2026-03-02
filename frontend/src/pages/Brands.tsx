@@ -8,7 +8,6 @@ import { useAuth } from '../context/AuthContext';
 interface Brand {
   id: number;
   name: string;
-  logo_url: string;
 }
 
 export default function Brands() {
@@ -19,7 +18,6 @@ export default function Brands() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Brand | null>(null);
   const [name, setName] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
   const [error, setError] = useState('');
 
   const fetchBrands = async () => {
@@ -38,7 +36,6 @@ export default function Brands() {
   const openCreate = () => {
     setEditing(null);
     setName('');
-    setLogoUrl('');
     setError('');
     setModalOpen(true);
   };
@@ -46,7 +43,6 @@ export default function Brands() {
   const openEdit = (brand: Brand) => {
     setEditing(brand);
     setName(brand.name);
-    setLogoUrl(brand.logo_url);
     setError('');
     setModalOpen(true);
   };
@@ -56,9 +52,9 @@ export default function Brands() {
     setError('');
     try {
       if (editing) {
-        await api.put(`/api/brands/${editing.id}`, { name, logo_url: logoUrl });
+        await api.put(`/api/brands/${editing.id}`, { name });
       } else {
-        await api.post('/api/brands', { name, logo_url: logoUrl });
+        await api.post('/api/brands', { name });
       }
       setModalOpen(false);
       fetchBrands();
@@ -93,7 +89,6 @@ export default function Brands() {
       <DataTable
         columns={[
           { key: 'name', label: 'Name' },
-          { key: 'logo_url', label: 'Logo URL', render: (b) => b.logo_url ? <span className="text-gray-400 text-xs truncate max-w-48 inline-block">{b.logo_url}</span> : <span className="text-gray-300">--</span> },
         ]}
         data={brands}
         loading={loading}
@@ -105,7 +100,6 @@ export default function Brands() {
         <form onSubmit={handleSubmit}>
           {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
           <FormField label="Name" value={name} onChange={setName} required placeholder="Brand name" />
-          <FormField label="Logo URL" value={logoUrl} onChange={setLogoUrl} placeholder="https://..." />
           <button type="submit" className="w-full mt-2 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-md cursor-pointer">
             {editing ? 'Update' : 'Create'}
           </button>
