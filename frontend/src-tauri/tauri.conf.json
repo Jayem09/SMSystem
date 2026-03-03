@@ -27,7 +27,7 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "../../backend/.env"
+      ".env"
     ],
     "externalBin": [
       "binARIES/backend-api"

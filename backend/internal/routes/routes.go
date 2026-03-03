@@ -12,12 +12,16 @@ import (
 
 // Handlers holds all handler instances.
 type Handlers struct {
-	Auth     *handlers.AuthHandler
-	Category *handlers.CategoryHandler
-	Brand    *handlers.BrandHandler
-	Product  *handlers.ProductHandler
-	Customer *handlers.CustomerHandler
-	Order    *handlers.OrderHandler
+	Auth      *handlers.AuthHandler
+	Category  *handlers.CategoryHandler
+	Brand     *handlers.BrandHandler
+	Product   *handlers.ProductHandler
+	Customer  *handlers.CustomerHandler
+	Order     *handlers.OrderHandler
+	Expense   *handlers.ExpenseHandler
+	Dashboard *handlers.DashboardHandler
+	Import    *handlers.ImportHandler
+	Log       *handlers.LogHandler
 }
 
 // Setup configures all API routes.
@@ -45,15 +49,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		protected.GET("/auth/me", h.Auth.GetMe)
 
 		// Dashboard
-		protected.GET("/dashboard", func(c *gin.Context) {
-			userEmail, _ := c.Get("userEmail")
-			userRole, _ := c.Get("userRole")
-			c.JSON(http.StatusOK, gin.H{
-				"message": "Welcome to the dashboard",
-				"email":   userEmail,
-				"role":    userRole,
-			})
-		})
+		protected.GET("/dashboard", h.Dashboard.GetStats)
 
 		// ─── Categories ───
 		categories := protected.Group("/categories")
@@ -74,6 +70,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		{
 			products.GET("", h.Product.List)
 			products.GET("/:id", h.Product.GetByID)
+			products.POST("/import", h.Import.ImportProducts)
 		}
 
 		// ─── Customers ───
@@ -91,6 +88,15 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			orders.GET("", h.Order.List)
 			orders.GET("/:id", h.Order.GetByID)
 			orders.POST("", h.Order.Create)
+		}
+
+		// ─── Expenses ───
+		expenses := protected.Group("/expenses")
+		{
+			expenses.GET("", h.Expense.List)
+			expenses.POST("", h.Expense.Create)
+			expenses.PUT("/:id", h.Expense.Update)
+			expenses.DELETE("/:id", h.Expense.Delete)
 		}
 
 		// ─── Admin-only routes ───
@@ -118,6 +124,9 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			// Order management
 			admin.PUT("/orders/:id/status", h.Order.UpdateStatus)
 			admin.DELETE("/orders/:id", h.Order.Delete)
+
+			// Activity Logs
+			admin.GET("/logs", h.Log.List)
 		}
 	}
 }

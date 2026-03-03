@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -11,6 +12,20 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        await api.get('/api/health');
+        setBackendStatus('online');
+      } catch (err) {
+        console.error('Backend health check failed:', err);
+        setBackendStatus('offline');
+      }
+    };
+    checkHealth();
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -44,6 +59,11 @@ export default function Register() {
         <div className="text-center mb-6">
           <h1 className="text-xl font-semibold text-gray-900">SMSystem</h1>
           <p className="text-sm text-gray-500 mt-1">Create a new account</p>
+          <div className="mt-2 flex justify-center">
+            {backendStatus === 'checking' && <span className="text-[10px] text-gray-400">Checking connection...</span>}
+            {backendStatus === 'online' && <span className="text-[10px] text-green-500 flex items-center">● Backend Online</span>}
+            {backendStatus === 'offline' && <span className="text-[10px] text-red-500 flex items-center">● Backend Offline (Check Docker)</span>}
+          </div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-6">

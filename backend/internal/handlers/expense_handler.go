@@ -1,0 +1,96 @@
+package handlers
+
+import (
+	"net/http"
+	"smsystem-backend/internal/database"
+	"smsystem-backend/internal/models"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+type ExpenseHandler struct{}
+
+func NewExpenseHandler() *ExpenseHandler {
+	return &ExpenseHandler{}
+}
+
+// Create handles POST /api/expenses
+func (h *ExpenseHandler) Create(c *gin.Context) {
+	var expense models.Expense
+	if err := c.ShouldBindJSON(&expense); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("userID")
+	expense.UserID = userID.(uint)
+
+	// Start Transaction
+	tx := database.DB.Begin()
+
+	if err := tx.Create(&expense).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create expense"})
+		return
+	}
+
+	// If it's an inventory procurement, update stock
+	if expense.ProductID != nil && expense.Quantity > 0 {
+		if err := tx.Model(&models.Product{}).Where("id = ?", *expense.ProductID).
+			Update("stock", database.DB.Raw("stock + ?", expense.Quantity)).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product stock"})
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, expense)
+}
+
+// List handles GET /api/expenses
+func (h *ExpenseHandler) List(c *gin.Context) {
+	var expenses []models.Expense
+	if err := database.DB.Preload("User").Preload("Product").Order("expense_date desc").Find(&expenses).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
+		return
+	}
+	c.JSON(http.StatusOK, expenses)
+}
+
+// Update handles PUT /api/expenses/:id
+func (h *ExpenseHandler) Update(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var expense models.Expense
+	if err := database.DB.First(&expense, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&expense); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Save(&expense).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update expense"})
+		return
+	}
+
+	c.JSON(http.StatusOK, expense)
+}
+
+// Delete handles DELETE /api/expenses/:id
+func (h *ExpenseHandler) Delete(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	if err := database.DB.Delete(&models.Expense{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
+}

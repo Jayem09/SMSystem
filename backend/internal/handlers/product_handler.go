@@ -1,19 +1,23 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ProductHandler struct{}
+type ProductHandler struct {
+	LogService *services.LogService
+}
 
-func NewProductHandler() *ProductHandler {
-	return &ProductHandler{}
+func NewProductHandler(logSvc *services.LogService) *ProductHandler {
+	return &ProductHandler{LogService: logSvc}
 }
 
 type productInput struct {
@@ -21,9 +25,22 @@ type productInput struct {
 	Description string  `json:"description"`
 	Price       float64 `json:"price" binding:"required,gt=0"`
 	Stock       int     `json:"stock" binding:"min=0"`
+	Size        string  `json:"size"`
+	ParentID    *uint   `json:"parent_id"`
 	ImageURL    string  `json:"image_url"`
 	CategoryID  uint    `json:"category_id" binding:"required"`
 	BrandID     uint    `json:"brand_id" binding:"required"`
+
+	// Tech Specs
+	PCD         string `json:"pcd"`
+	OffsetET    string `json:"offset_et"`
+	Width       string `json:"width"`
+	Bore        string `json:"bore"`
+	Finish      string `json:"finish"`
+	SpeedRating string `json:"speed_rating"`
+	LoadIndex   string `json:"load_index"`
+	DOTCode     string `json:"dot_code"`
+	PlyRating   string `json:"ply_rating"`
 }
 
 // List returns all products with optional filters.
@@ -41,9 +58,13 @@ func (h *ProductHandler) List(c *gin.Context) {
 		query = query.Where("brand_id = ?", brandID)
 	}
 
-	// Search by name
+	// Search by name and specialized fields
 	if search := c.Query("search"); search != "" {
-		query = query.Where("name LIKE ?", "%"+search+"%")
+		s := "%" + search + "%"
+		query = query.Where(
+			"name LIKE ? OR size LIKE ? OR pcd LIKE ? OR offset_et LIKE ? OR width LIKE ? OR speed_rating LIKE ? OR finish LIKE ?",
+			s, s, s, s, s, s, s,
+		)
 	}
 
 	// Price range
@@ -52,6 +73,14 @@ func (h *ProductHandler) List(c *gin.Context) {
 	}
 	if maxPrice := c.Query("max_price"); maxPrice != "" {
 		query = query.Where("price <= ?", maxPrice)
+	}
+
+	// Filter by parent (for variants)
+	if parentID := c.Query("parent_id"); parentID != "" {
+		query = query.Where("parent_id = ?", parentID)
+	} else if c.Query("all") == "" {
+		// By default, only show top-level products (not variants)
+		query = query.Where("parent_id IS NULL")
 	}
 
 	var products []models.Product
@@ -105,9 +134,20 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		Description: input.Description,
 		Price:       input.Price,
 		Stock:       input.Stock,
+		Size:        input.Size,
+		ParentID:    input.ParentID,
 		ImageURL:    input.ImageURL,
 		CategoryID:  input.CategoryID,
 		BrandID:     input.BrandID,
+		PCD:         input.PCD,
+		OffsetET:    input.OffsetET,
+		Width:       input.Width,
+		Bore:        input.Bore,
+		Finish:      input.Finish,
+		SpeedRating: input.SpeedRating,
+		LoadIndex:   input.LoadIndex,
+		DOTCode:     input.DOTCode,
+		PlyRating:   input.PlyRating,
 	}
 
 	if err := database.DB.Create(&product).Error; err != nil {
@@ -140,17 +180,34 @@ func (h *ProductHandler) Update(c *gin.Context) {
 		return
 	}
 
+	oldPrice := product.Price
 	product.Name = input.Name
 	product.Description = input.Description
 	product.Price = input.Price
 	product.Stock = input.Stock
+	product.Size = input.Size
+	product.ParentID = input.ParentID
 	product.ImageURL = input.ImageURL
 	product.CategoryID = input.CategoryID
 	product.BrandID = input.BrandID
+	product.PCD = input.PCD
+	product.OffsetET = input.OffsetET
+	product.Width = input.Width
+	product.Bore = input.Bore
+	product.Finish = input.Finish
+	product.SpeedRating = input.SpeedRating
+	product.LoadIndex = input.LoadIndex
+	product.DOTCode = input.DOTCode
+	product.PlyRating = input.PlyRating
 
 	if err := database.DB.Save(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil && oldPrice != product.Price {
+		h.LogService.Record(userIDValue.(uint), "UPDATE_PRICE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Price changed for %s: P%.2f -> P%.2f", product.Name, oldPrice, product.Price), c.ClientIP())
 	}
 
 	database.DB.Preload("Category").Preload("Brand").First(&product, product.ID)
@@ -165,10 +222,20 @@ func (h *ProductHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	result := database.DB.Delete(&models.Product{}, id)
-	if result.RowsAffected == 0 {
+	var product models.Product
+	if err := database.DB.First(&product, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 		return
+	}
+
+	if err := database.DB.Delete(&models.Product{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete product"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Product", strconv.Itoa(int(id)), fmt.Sprintf("Deleted product: %s", product.Name), c.ClientIP())
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Product deleted"})
 }

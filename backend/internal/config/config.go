@@ -41,13 +41,13 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
+		DBHost:     getEnv("DB_HOST", "127.0.0.1"),
 		DBPort:     getEnv("DB_PORT", "3306"),
 		DBUser:     getEnv("DB_USER", "smsystem"),
 		DBPassword: getEnv("DB_PASSWORD", "smsystem_secret"),
 		DBName:     getEnv("DB_NAME", "smsystem_db"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
-		JWTSecret:  getEnv("JWT_SECRET", "default-secret-change-me"),
+		JWTSecret:  getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-in-production"),
 		JWTExpiry:  getEnv("JWT_EXPIRY", "24h"),
 	}
 }

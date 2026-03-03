@@ -10,6 +10,8 @@ import Categories from './pages/Categories';
 import Brands from './pages/Brands';
 import Customers from './pages/Customers';
 import Orders from './pages/Orders';
+import Expenses from './pages/Expenses';
+import ActivityLogs from './pages/ActivityLogs';
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
             <Route path="/brands" element={<Brands />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/logs" element={<ActivityLogs />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

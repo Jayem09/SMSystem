@@ -10,7 +10,6 @@ import (
 	"smsystem-backend/internal/routes"
 	"smsystem-backend/internal/services"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,33 +24,44 @@ func main() {
 
 	// Initialize services and handlers
 	authService := services.NewAuthService(cfg)
+	logService := services.NewLogService()
 
 	h := &routes.Handlers{
-		Auth:     handlers.NewAuthHandler(authService),
-		Category: handlers.NewCategoryHandler(),
-		Brand:    handlers.NewBrandHandler(),
-		Product:  handlers.NewProductHandler(),
-		Customer: handlers.NewCustomerHandler(),
-		Order:    handlers.NewOrderHandler(),
+		Auth:      handlers.NewAuthHandler(authService),
+		Category:  handlers.NewCategoryHandler(),
+		Brand:     handlers.NewBrandHandler(),
+		Product:   handlers.NewProductHandler(logService),
+		Customer:  handlers.NewCustomerHandler(),
+		Order:     handlers.NewOrderHandler(logService),
+		Expense:   handlers.NewExpenseHandler(),
+		Dashboard: handlers.NewDashboardHandler(),
+		Import:    handlers.NewImportHandler(),
+		Log:       handlers.NewLogHandler(),
 	}
 
 	// Setup Gin router
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
 	// CORS configuration
-	// Allow frontend origins (Dev and Production Tauri)
-	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			"http://localhost:1420",   // Default Tauri dev port
-			"tauri://localhost",       // Tauri production (Win/Linux)
-			"https://tauri.localhost", // Tauri production (macOS)
-		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+	router.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Setup routes
 	routes.Setup(router, cfg, h)

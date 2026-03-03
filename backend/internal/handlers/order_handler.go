@@ -2,20 +2,24 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type OrderHandler struct{}
+type OrderHandler struct {
+	LogService *services.LogService
+}
 
-func NewOrderHandler() *OrderHandler {
-	return &OrderHandler{}
+func NewOrderHandler(logSvc *services.LogService) *OrderHandler {
+	return &OrderHandler{LogService: logSvc}
 }
 
 type orderItemInput struct {
@@ -24,9 +28,13 @@ type orderItemInput struct {
 }
 
 type orderInput struct {
-	CustomerID    uint             `json:"customer_id" binding:"required"`
-	PaymentMethod string           `json:"payment_method" binding:"required"`
-	Items         []orderItemInput `json:"items" binding:"required,min=1,dive"`
+	CustomerID     uint             `json:"customer_id" binding:"required"`
+	PaymentMethod  string           `json:"payment_method" binding:"required"`
+	DiscountAmount float64          `json:"discount_amount"`
+	DiscountType   string           `json:"discount_type"` // "fixed" or "percentage"
+	TaxAmount      float64          `json:"tax_amount"`
+	IsTaxInclusive bool             `json:"is_tax_inclusive"`
+	Items          []orderItemInput `json:"items" binding:"required,min=1,dive"`
 }
 
 type statusInput struct {
@@ -129,14 +137,32 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			}
 		}
 
+		// Apply Discount
+		finalTotal := totalAmount
+		if input.DiscountType == "percentage" {
+			finalTotal -= totalAmount * (input.DiscountAmount / 100)
+		} else {
+			finalTotal -= input.DiscountAmount
+		}
+
+		// Apply Tax
+		finalTax := input.TaxAmount
+		if !input.IsTaxInclusive {
+			finalTotal += finalTax
+		}
+
 		// Create order
 		order = models.Order{
-			CustomerID:    input.CustomerID,
-			UserID:        userID.(uint),
-			TotalAmount:   totalAmount,
-			Status:        "pending",
-			PaymentMethod: input.PaymentMethod,
-			Items:         orderItems,
+			CustomerID:     input.CustomerID,
+			UserID:         userID.(uint),
+			TotalAmount:    finalTotal,
+			DiscountAmount: input.DiscountAmount,
+			DiscountType:   input.DiscountType,
+			TaxAmount:      input.TaxAmount,
+			IsTaxInclusive: input.IsTaxInclusive,
+			Status:         "pending",
+			PaymentMethod:  input.PaymentMethod,
+			Items:          orderItems,
 		}
 
 		if err := tx.Create(&order).Error; err != nil {
@@ -176,6 +202,7 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
+	oldStatus := order.Status
 	order.Status = input.Status
 	if err := database.DB.Save(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
@@ -183,6 +210,11 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	database.DB.Preload("Customer").Preload("User").Preload("Items.Product").First(&order, order.ID)
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE_STATUS", "Order", strconv.Itoa(int(order.ID)), fmt.Sprintf("Status changed from %s to %s", oldStatus, input.Status), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated", "order": order})
 }
 
@@ -194,21 +226,32 @@ func (h *OrderHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Delete items first, then order
+	var order models.Order
+	if err := database.DB.First(&order, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	// Delete items first, then order in a transaction
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("order_id = ?", id).Delete(&models.OrderItem{}).Error; err != nil {
 			return err
 		}
-		result := tx.Delete(&models.Order{}, id)
-		if result.RowsAffected == 0 {
-			return errors.New("order not found")
+		if err := tx.Delete(&models.Order{}, id).Error; err != nil {
+			return err
 		}
 		return nil
 	})
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete order"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Order deleted"})
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Order", strconv.Itoa(int(id)), fmt.Sprintf("Deleted order #%d", id), c.ClientIP())
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
 }

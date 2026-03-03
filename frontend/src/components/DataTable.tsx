@@ -13,6 +13,7 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
+  onView?: (item: T) => void;
   actions?: (item: T) => React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export default function DataTable<T extends { id: number | string }>({
   searchPlaceholder = 'Search...',
   onEdit,
   onDelete,
+  onView,
   actions,
 }: DataTableProps<T>) {
   return (
@@ -78,28 +80,36 @@ export default function DataTable<T extends { id: number | string }>({
                       {col.render ? col.render(item) : (item as any)[col.key]}
                     </td>
                   ))}
-                  {(onEdit || onDelete || actions) && (
+                  {(onEdit || onDelete || onView || actions) && (
                     <td className="px-4 py-3 text-right space-x-2">
                       {actions ? (
                         actions(item)
                       ) : (
                         <>
-                          {onEdit && (
-                            <button
-                              onClick={() => onEdit(item)}
-                              className="text-indigo-600 hover:text-indigo-800 text-xs font-medium cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          {onDelete && (
-                            <button
-                              onClick={() => onDelete(item)}
-                              className="text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          )}
+                          {onView && (
+                        <button
+                          onClick={() => onView(item)}
+                          className="text-gray-600 hover:text-gray-800 text-xs font-medium cursor-pointer"
+                        >
+                          View
+                        </button>
+                      )}
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(item)}
+                          className="text-indigo-600 hover:text-indigo-800 text-xs font-medium cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(item)}
+                          className="text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      )}
                         </>
                       )}
                     </td>

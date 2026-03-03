@@ -8,6 +8,8 @@ const navItems = [
   { to: '/brands', label: 'Brands' },
   { to: '/customers', label: 'Customers' },
   { to: '/orders', label: 'Orders' },
+  { to: '/expenses', label: 'Expenses' },
+  { to: '/logs', label: 'Activity Logs' },
 ];
 
 export default function Layout() {
