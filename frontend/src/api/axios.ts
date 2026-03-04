@@ -1,16 +1,10 @@
 import axios from 'axios';
 
-// If running inside Tauri (Mac/Windows), point to the sidecar backend URL
-// Otherwise, use relative path (which relies on Vite proxy in dev)
-const isTauri = typeof window !== 'undefined' && 
-  (window.location.origin.startsWith('tauri://') || 
-   window.location.origin.startsWith('https://tauri.localhost'));
+// In dev mode (npm run dev), use Vite proxy (empty baseURL)
+// In production builds (Tauri desktop app), connect directly to backend
+const baseURL = import.meta.env.DEV ? '' : 'http://localhost:8080';
 
-const baseURL = isTauri ? 'http://localhost:8080' : '';
-
-if (isTauri) {
-  console.log('Tauri environment detected. Using baseURL:', baseURL);
-}
+console.log('API baseURL:', baseURL, '| DEV mode:', import.meta.env.DEV);
 
 const api = axios.create({
   baseURL,

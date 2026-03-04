@@ -15,6 +15,15 @@
           "sidecar": true
         }
       ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "backend-api",
+          "sidecar": true
+        }
+      ]
     }
   ]
 }
