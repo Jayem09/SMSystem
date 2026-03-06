@@ -3,7 +3,7 @@ import api from '../api/axios';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { useAuth } from '../hooks/useAuth';
-import { Printer, Eye, Trash2, ChevronUp} from 'lucide-react';
+import { Printer, Eye, Trash2 } from 'lucide-react';
 
 interface Customer { id: number; name: string; }
 interface Product { id: number; name: string; price: number; stock: number; }
@@ -41,9 +41,9 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [itemsModalOpen, setItemsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
-  const [expandedId, setExpandedId] = useState<number | null>(null);
 
 
 
@@ -102,11 +102,11 @@ export default function Orders() {
         actions={(order) => (
           <div className="flex items-center gap-3 justify-end">
             <button
-              onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+              onClick={() => { setSelectedOrder(order); setItemsModalOpen(true); }}
               className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
               title="View Details"
             >
-              {expandedId === order.id ? <ChevronUp className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <Eye className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setSelectedOrder(order); setInvoiceModalOpen(true); }}
@@ -129,32 +129,33 @@ export default function Orders() {
         )}
       />
 
-      {/* Expanded order items */}
-      {expandedId && (
-        <div className="mt-2 border border-gray-200 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-medium text-gray-900 mb-2">Order #{expandedId} - Items</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-gray-500 uppercase">
-                <th className="pb-2">Product</th>
-                <th className="pb-2">Qty</th>
-                <th className="pb-2">Unit Price</th>
-                <th className="pb-2">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {orders.find((o) => o.id === expandedId)?.items?.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-2 text-gray-900">{item.product?.name || `Product #${item.product_id}`}</td>
-                  <td className="py-2 text-gray-600">{item.quantity}</td>
-                  <td className="py-2 text-gray-600">P {item.unit_price.toLocaleString()}</td>
-                  <td className="py-2 text-gray-900 font-medium">P {item.subtotal.toLocaleString()}</td>
+      {/* Items Modal */}
+      <Modal open={itemsModalOpen} onClose={() => setItemsModalOpen(false)} title={selectedOrder ? `Order #${selectedOrder.id} - Items` : 'Order Items'}>
+        {selectedOrder && (
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 uppercase">
+                  <th className="pb-3 border-b border-gray-100">Product</th>
+                  <th className="pb-3 border-b border-gray-100 text-center">Qty</th>
+                  <th className="pb-3 border-b border-gray-100 text-right">Unit Price</th>
+                  <th className="pb-3 border-b border-gray-100 text-right">Subtotal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {selectedOrder.items?.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="py-3 text-gray-900 font-medium">{item.product?.name || `Product #${item.product_id}`}</td>
+                    <td className="py-3 text-gray-600 text-center">{item.quantity}</td>
+                    <td className="py-3 text-gray-600 text-right">₱{item.unit_price.toLocaleString()}</td>
+                    <td className="py-3 text-gray-900 font-bold text-right">₱{item.subtotal.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
 
 
 
