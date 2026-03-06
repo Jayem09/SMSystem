@@ -124,7 +124,6 @@ export default function Customers() {
           onClick={openCreate} 
           className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-md transition-all shadow-sm hover:shadow-md active:scale-95 cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
           Add Customer
         </button>
       </div>

@@ -1,8 +1,7 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import FormField from '../components/FormField';
 import { useAuth } from '../hooks/useAuth';
 import { Printer, Eye, Trash2, ChevronUp} from 'lucide-react';
 
@@ -38,23 +37,13 @@ export default function Orders() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Form
-  const [customerId, setCustomerId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [discountAmount, setDiscountAmount] = useState('0');
-  const [discountType, setDiscountType] = useState('fixed'); // 'fixed' or 'percentage'
-  const [taxAmount, setTaxAmount] = useState('0');
-  const [isTaxInclusive, setIsTaxInclusive] = useState(false);
-  const [items, setItems] = useState<{ product_id: string; quantity: string }[]>([{ product_id: '', quantity: '1' }]);
+
 
   const fetchOrders = async () => {
     try {
@@ -68,62 +57,7 @@ export default function Orders() {
     }
   };
 
-  const fetchMeta = async () => {
-    const [cRes, pRes] = await Promise.all([
-      api.get('/api/customers'),
-      api.get('/api/products'),
-    ]);
-    setCustomers(cRes.data.customers || []);
-    setProducts(pRes.data.products || []);
-  };
-
-  useEffect(() => { fetchOrders(); fetchMeta(); }, []);
-
-  const openCreate = () => {
-    setCustomerId('');
-    setPaymentMethod('cash');
-    setDiscountAmount('0');
-    setDiscountType('fixed');
-    setTaxAmount('0');
-    setIsTaxInclusive(false);
-    setItems([{ product_id: '', quantity: '1' }]);
-    setError('');
-    setModalOpen(true);
-  };
-
-  const addItem = () => setItems([...items, { product_id: '', quantity: '1' }]);
-  const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, field: string, val: string) => {
-    const updated = [...items];
-    (updated[i] as unknown as Record<string, string>)[field] = val;
-    setItems(updated);
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    const payload = {
-      customer_id: parseInt(customerId),
-      payment_method: paymentMethod,
-      discount_amount: parseFloat(discountAmount) || 0,
-      discount_type: discountType,
-      tax_amount: parseFloat(taxAmount) || 0,
-      is_tax_inclusive: isTaxInclusive,
-      items: items.map((it) => ({
-        product_id: parseInt(it.product_id),
-        quantity: parseInt(it.quantity),
-      })),
-    };
-    try {
-      await api.post('/api/orders', payload);
-      setModalOpen(false);
-      fetchOrders();
-      fetchMeta();
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { error?: string } } };
-      setError(axiosError.response?.data?.error || 'Failed to create order');
-    }
-  };
+  useEffect(() => { fetchOrders(); }, []);
 
   const updateStatus = async (order: Order, status: string) => {
     try {
@@ -151,16 +85,9 @@ export default function Orders() {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Orders</h1>
           <p className="text-gray-500 mt-1">Manage sales, payments, and generate customer receipts.</p>
         </div>
-        <button 
-          onClick={openCreate} 
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-md cursor-pointer"
-        >
-
-          NEW TRANSACTION
-        </button>
       </div>
 
-      {error && !modalOpen && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       <DataTable
         columns={[
@@ -245,134 +172,7 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Create order modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Order">
-        <form onSubmit={handleSubmit}>
-          {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-          <FormField
-            label="Customer"
-            type="select"
-            value={customerId}
-            onChange={setCustomerId}
-            required
-            options={customers.map((c) => ({ value: c.id, label: c.name }))}
-          />
-          <FormField
-            label="Payment Method"
-            type="select"
-            value={paymentMethod}
-            onChange={setPaymentMethod}
-            required
-            options={[
-              { value: 'cash', label: 'Cash' },
-              { value: 'card', label: 'Card' },
-              { value: 'gcash', label: 'GCash' },
-              { value: 'bank_transfer', label: 'Bank Transfer' },
-            ]}
-          />
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div className="flex gap-1 items-end">
-              <div className="flex-1">
-                <FormField label="Discount" type="number" value={discountAmount} onChange={setDiscountAmount} min={0} step="0.01" />
-              </div>
-              <select
-                className="mb-3 px-2 py-1.5 border border-gray-200 rounded text-sm bg-gray-50 h-[38px]"
-                value={discountType}
-                onChange={(e) => setDiscountType(e.target.value)}
-              >
-                <option value="fixed">Fixed</option>
-                <option value="percentage">%</option>
-              </select>
-            </div>
-            <div className="flex flex-col">
-              <FormField label="Tax Amount" type="number" value={taxAmount} onChange={setTaxAmount} min={0} step="0.01" />
-              <label className="flex items-center gap-2 text-xs text-gray-500 mt-[-8px]">
-                <input type="checkbox" checked={isTaxInclusive} onChange={(e) => setIsTaxInclusive(e.target.checked)} />
-                Tax Inclusive
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Items</label>
-              <button type="button" onClick={addItem} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer">
-                + Add item
-              </button>
-            </div>
-            {items.map((item, i) => (
-              <div key={i} className="flex gap-2 mb-2 items-end">
-                <div className="flex-1">
-                  <select
-                    value={item.product_id}
-                    onChange={(e) => updateItem(i, 'product_id', e.target.value)}
-                    required
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
-                  >
-                    <option value="">Product</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} (stock: {p.stock})</option>
-                    ))}
-                  </select>
-                </div>
-                <input
-                  type="number"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(i, 'quantity', e.target.value)}
-                  min={1}
-                  required
-                  className="w-20 px-2 py-1.5 border border-gray-200 rounded text-sm"
-                  placeholder="Qty"
-                />
-                {items.length > 1 && (
-                  <button type="button" onClick={() => removeItem(i)} className="text-red-500 text-xs cursor-pointer pb-1">
-                    x
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="flex justify-between text-sm text-gray-500 mb-1">
-              <span>Subtotal</span>
-              <span>P {
-                items.reduce((acc, it) => {
-                  const p = products.find(prod => String(prod.id) === it.product_id);
-                  return acc + (p?.price || 0) * (parseInt(it.quantity) || 0);
-                }, 0).toLocaleString()
-              }</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-gray-900">
-              <span>Final Total</span>
-              <span>P {
-                (() => {
-                  const sub = items.reduce((acc, it) => {
-                    const p = products.find(prod => String(prod.id) === it.product_id);
-                    return acc + (p?.price || 0) * (parseInt(it.quantity) || 0);
-                  }, 0);
-                  let total = sub;
-                  const disc = parseFloat(discountAmount) || 0;
-                  if (discountType === 'percentage') {
-                    total -= sub * (disc / 100);
-                  } else {
-                    total -= disc;
-                  }
-                  if (!isTaxInclusive) {
-                    total += parseFloat(taxAmount) || 0;
-                  }
-                  return Math.max(0, total).toLocaleString();
-                })()
-              }</span>
-            </div>
-          </div>
-
-          <button type="submit" className="w-full mt-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-md cursor-pointer">
-            Create Order
-          </button>
-        </form>
-      </Modal>
 
       {/* Invoice Modal */}
       <Modal open={invoiceModalOpen} onClose={() => setInvoiceModalOpen(false)} title="Print Preview">
