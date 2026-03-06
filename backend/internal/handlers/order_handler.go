@@ -185,6 +185,9 @@ func (h *OrderHandler) Create(c *gin.Context) {
 
 	// Reload with all relationships
 	database.DB.Preload("Customer").Preload("User").Preload("Items.Product").First(&order, order.ID)
+
+	h.LogService.Record(userID.(uint), "CREATE", "Order", strconv.Itoa(int(order.ID)), fmt.Sprintf("Checked out POS Order #%d", order.ID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Order created", "order": order})
 }
 

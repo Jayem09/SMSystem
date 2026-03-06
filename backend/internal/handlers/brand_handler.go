@@ -1,19 +1,23 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type BrandHandler struct{}
+type BrandHandler struct {
+	LogService *services.LogService
+}
 
-func NewBrandHandler() *BrandHandler {
-	return &BrandHandler{}
+func NewBrandHandler(logService *services.LogService) *BrandHandler {
+	return &BrandHandler{LogService: logService}
 }
 
 type brandInput struct {
@@ -64,6 +68,12 @@ func (h *BrandHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "Brand already exists or creation failed"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "CREATE", "Brand", strconv.Itoa(int(brand.ID)), fmt.Sprintf("Created brand: %s", brand.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Brand created", "brand": brand})
 }
 
@@ -94,6 +104,12 @@ func (h *BrandHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update brand"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE", "Brand", strconv.Itoa(int(brand.ID)), fmt.Sprintf("Updated brand: %s", brand.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Brand updated", "brand": brand})
 }
 
@@ -110,5 +126,11 @@ func (h *BrandHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Brand not found"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Brand", strconv.Itoa(int(id)), fmt.Sprintf("Deleted brand #%d", id), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Brand deleted"})
 }

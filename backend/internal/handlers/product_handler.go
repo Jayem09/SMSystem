@@ -157,6 +157,12 @@ func (h *ProductHandler) Create(c *gin.Context) {
 
 	// Reload with relationships
 	database.DB.Preload("Category").Preload("Brand").First(&product, product.ID)
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "CREATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Created product: %s", product.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Product created", "product": product})
 }
 
@@ -206,8 +212,12 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	}
 
 	userIDValue, _ := c.Get("userID")
-	if userIDValue != nil && oldPrice != product.Price {
-		h.LogService.Record(userIDValue.(uint), "UPDATE_PRICE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Price changed for %s: P%.2f -> P%.2f", product.Name, oldPrice, product.Price), c.ClientIP())
+	if userIDValue != nil {
+		if oldPrice != product.Price {
+			h.LogService.Record(userIDValue.(uint), "UPDATE_PRICE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Price changed for %s: P%.2f -> P%.2f", product.Name, oldPrice, product.Price), c.ClientIP())
+		} else {
+			h.LogService.Record(userIDValue.(uint), "UPDATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Updated details for %s", product.Name), c.ClientIP())
+		}
 	}
 
 	database.DB.Preload("Category").Preload("Brand").First(&product, product.ID)

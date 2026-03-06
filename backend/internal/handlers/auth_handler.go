@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"smsystem-backend/internal/services"
 
@@ -11,11 +12,12 @@ import (
 // AuthHandler handles HTTP requests for authentication.
 type AuthHandler struct {
 	AuthService *services.AuthService
+	LogService  *services.LogService
 }
 
 // NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	return &AuthHandler{AuthService: authService}
+func NewAuthHandler(authService *services.AuthService, logService *services.LogService) *AuthHandler {
+	return &AuthHandler{AuthService: authService, LogService: logService}
 }
 
 // Register handles user registration.
@@ -64,6 +66,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Log the login action
+	h.LogService.Record(response.User.ID, "LOGIN", "System", strconv.Itoa(int(response.User.ID)), "User logged in", c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",

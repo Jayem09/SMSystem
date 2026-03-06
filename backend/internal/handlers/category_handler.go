@@ -1,19 +1,23 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type CategoryHandler struct{}
+type CategoryHandler struct {
+	LogService *services.LogService
+}
 
-func NewCategoryHandler() *CategoryHandler {
-	return &CategoryHandler{}
+func NewCategoryHandler(logService *services.LogService) *CategoryHandler {
+	return &CategoryHandler{LogService: logService}
 }
 
 type categoryInput struct {
@@ -64,6 +68,12 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "Category already exists or creation failed"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "CREATE", "Category", strconv.Itoa(int(category.ID)), fmt.Sprintf("Created category: %s", category.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Category created", "category": category})
 }
 
@@ -94,6 +104,12 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE", "Category", strconv.Itoa(int(category.ID)), fmt.Sprintf("Updated category: %s", category.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Category updated", "category": category})
 }
 
@@ -110,5 +126,11 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Category", strconv.Itoa(int(id)), fmt.Sprintf("Deleted category #%d", id), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Category deleted"})
 }

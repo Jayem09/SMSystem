@@ -1,19 +1,23 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type CustomerHandler struct{}
+type CustomerHandler struct {
+	LogService *services.LogService
+}
 
-func NewCustomerHandler() *CustomerHandler {
-	return &CustomerHandler{}
+func NewCustomerHandler(logService *services.LogService) *CustomerHandler {
+	return &CustomerHandler{LogService: logService}
 }
 
 type customerInput struct {
@@ -75,6 +79,12 @@ func (h *CustomerHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create customer"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "CREATE", "Customer", strconv.Itoa(int(customer.ID)), fmt.Sprintf("Created customer: %s", customer.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Customer created", "customer": customer})
 }
 
@@ -107,6 +117,12 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update customer"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE", "Customer", strconv.Itoa(int(customer.ID)), fmt.Sprintf("Updated customer: %s", customer.Name), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Customer updated", "customer": customer})
 }
 
@@ -123,5 +139,11 @@ func (h *CustomerHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Customer not found"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Customer", strconv.Itoa(int(id)), fmt.Sprintf("Deleted customer #%d", id), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Customer deleted"})
 }

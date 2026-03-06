@@ -1,17 +1,21 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type UserHandler struct{}
+type UserHandler struct {
+	LogService *services.LogService
+}
 
-func NewUserHandler() *UserHandler {
-	return &UserHandler{}
+func NewUserHandler(logService *services.LogService) *UserHandler {
+	return &UserHandler{LogService: logService}
 }
 
 // UserResponse is used to return user data without the hash
@@ -84,6 +88,11 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 		return
 	}
 
+	currentUserID, _ := c.Get("userID")
+	if currentUserID != nil {
+		h.LogService.Record(currentUserID.(uint), "UPDATE_ROLE", "User", id, fmt.Sprintf("Changed role for %s to %s", user.Name, req.Role), c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "User role updated successfully"})
 }
 
@@ -107,6 +116,10 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	if err := database.DB.Delete(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
+	}
+
+	if currentUserID != nil {
+		h.LogService.Record(currentUserID.(uint), "DELETE", "User", id, fmt.Sprintf("Deleted user %s", user.Name), c.ClientIP())
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})

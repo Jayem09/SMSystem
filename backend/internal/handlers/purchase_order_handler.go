@@ -1,20 +1,24 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type PurchaseOrderHandler struct{}
+type PurchaseOrderHandler struct {
+	LogService *services.LogService
+}
 
-func NewPurchaseOrderHandler() *PurchaseOrderHandler {
-	return &PurchaseOrderHandler{}
+func NewPurchaseOrderHandler(logService *services.LogService) *PurchaseOrderHandler {
+	return &PurchaseOrderHandler{LogService: logService}
 }
 
 type purchaseOrderItemInput struct {
@@ -115,6 +119,8 @@ func (h *PurchaseOrderHandler) Create(c *gin.Context) {
 	// Reload with relations
 	database.DB.Preload("Supplier").Preload("User").Preload("Items.Product").First(&po, po.ID)
 
+	h.LogService.Record(userID.(uint), "CREATE", "Purchase Order", strconv.Itoa(int(po.ID)), fmt.Sprintf("Created PO to supplier #%d", po.SupplierID), c.ClientIP())
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Purchase order created", "purchase_order": po})
 }
 
@@ -174,6 +180,11 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 	// Reload with relations
 	database.DB.Preload("Supplier").Preload("User").Preload("Items.Product").First(&po, po.ID)
 
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE", "Purchase Order", strconv.Itoa(int(po.ID)), "Received items and updated stock", c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Purchase order received. Stock updated.", "purchase_order": po})
 }
 
@@ -199,6 +210,11 @@ func (h *PurchaseOrderHandler) Delete(c *gin.Context) {
 	// Delete items first, then the PO
 	database.DB.Where("purchase_order_id = ?", id).Delete(&models.PurchaseOrderItem{})
 	database.DB.Delete(&po)
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Purchase Order", strconv.Itoa(int(id)), fmt.Sprintf("Deleted PO #%d", id), c.ClientIP())
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Purchase order deleted"})
 }

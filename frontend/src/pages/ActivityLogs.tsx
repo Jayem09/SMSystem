@@ -35,7 +35,10 @@ export default function ActivityLogs() {
   const getActionColor = (action: string) => {
     if (action.includes('DELETE')) return 'text-red-600 bg-red-50';
     if (action.includes('UPDATE_PRICE')) return 'text-orange-600 bg-orange-50';
+    if (action.includes('UPDATE_ROLE')) return 'text-indigo-600 bg-indigo-50';
     if (action.includes('UPDATE')) return 'text-blue-600 bg-blue-50';
+    if (action.includes('CREATE')) return 'text-green-600 bg-green-50';
+    if (action.includes('LOGIN')) return 'text-purple-600 bg-purple-50';
     return 'text-gray-600 bg-gray-50';
   };
 

@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Product represents an item available for sale.
@@ -29,8 +31,9 @@ type Product struct {
 	DOTCode     string `gorm:"size:20" json:"dot_code"`     // e.g. "DOT 1223"
 	PlyRating   string `gorm:"size:10" json:"ply_rating"`   // e.g. "10PR"
 
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// Relationships
 	Category Category `gorm:"foreignKey:CategoryID" json:"category,omitempty"`

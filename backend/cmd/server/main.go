@@ -29,20 +29,20 @@ func main() {
 	terminalService := services.NewTerminalService(true, "COM1")
 
 	h := &routes.Handlers{
-		Auth:          handlers.NewAuthHandler(authService),
-		Category:      handlers.NewCategoryHandler(),
-		Brand:         handlers.NewBrandHandler(),
+		Auth:          handlers.NewAuthHandler(authService, logService),
+		Category:      handlers.NewCategoryHandler(logService),
+		Brand:         handlers.NewBrandHandler(logService),
 		Product:       handlers.NewProductHandler(logService),
-		Customer:      handlers.NewCustomerHandler(),
+		Customer:      handlers.NewCustomerHandler(logService),
 		Order:         handlers.NewOrderHandler(logService),
-		Expense:       handlers.NewExpenseHandler(),
+		Expense:       handlers.NewExpenseHandler(logService),
 		Dashboard:     handlers.NewDashboardHandler(),
 		Import:        handlers.NewImportHandler(),
 		Log:           handlers.NewLogHandler(),
 		Terminal:      handlers.NewTerminalHandler(terminalService),
-		Supplier:      handlers.NewSupplierHandler(),
-		PurchaseOrder: handlers.NewPurchaseOrderHandler(),
-		User:          handlers.NewUserHandler(),
+		Supplier:      handlers.NewSupplierHandler(logService),
+		PurchaseOrder: handlers.NewPurchaseOrderHandler(logService),
+		User:          handlers.NewUserHandler(logService),
 	}
 
 	// Setup Gin router

@@ -4,15 +4,18 @@ import (
 	"net/http"
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ExpenseHandler struct{}
+type ExpenseHandler struct {
+	LogService *services.LogService
+}
 
-func NewExpenseHandler() *ExpenseHandler {
-	return &ExpenseHandler{}
+func NewExpenseHandler(logService *services.LogService) *ExpenseHandler {
+	return &ExpenseHandler{LogService: logService}
 }
 
 // Create handles POST /api/expenses
@@ -50,6 +53,8 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		return
 	}
 
+	h.LogService.Record(userID.(uint), "CREATE", "Expense", strconv.Itoa(int(expense.ID)), "Recorded new expense", c.ClientIP())
+
 	c.JSON(http.StatusCreated, expense)
 }
 
@@ -82,6 +87,11 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		return
 	}
 
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UPDATE", "Expense", strconv.Itoa(id), "Updated expense details", c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, expense)
 }
 
@@ -92,5 +102,11 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
 		return
 	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "DELETE", "Expense", strconv.Itoa(id), "Deleted expense", c.ClientIP())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
 }
