@@ -59,14 +59,7 @@ export default function Orders() {
 
   useEffect(() => { fetchOrders(); }, []);
 
-  const updateStatus = async (order: Order, status: string) => {
-    try {
-      await api.put(`/api/orders/${order.id}/status`, { status });
-      fetchOrders();
-    } catch {
-      alert('Failed to update status');
-    }
-  };
+
 
   const handleDelete = async (order: Order) => {
     if (!confirm(`Delete order #${order.id}?`)) return;
@@ -120,18 +113,7 @@ export default function Orders() {
             >
               <Printer className="w-4 h-4" />
             </button>
-            {isAdmin && order.status !== 'completed' && order.status !== 'cancelled' && (
-              <select
-                value=""
-                onChange={(e) => { if (e.target.value) updateStatus(order, e.target.value); }}
-                className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
-              >
-                <option value="">Status</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            )}
+
             {isAdmin && (
               <button 
                 onClick={() => handleDelete(order)} 

@@ -166,7 +166,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			DiscountType:   input.DiscountType,
 			TaxAmount:      input.TaxAmount,
 			IsTaxInclusive: input.IsTaxInclusive,
-			Status:         "pending",
+			Status:         "completed",
 			PaymentMethod:  input.PaymentMethod,
 			Items:          orderItems,
 		}
