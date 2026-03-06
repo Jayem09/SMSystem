@@ -17,7 +17,9 @@ interface OrderItem {
 }
 interface Order {
   id: number;
-  customer_id: number;
+  customer_id?: number | null;
+  guest_name?: string;
+  guest_phone?: string;
   total_amount: number;
   status: string;
   payment_method: string;
@@ -85,7 +87,7 @@ export default function Orders() {
       <DataTable
         columns={[
           { key: 'id', label: 'Order #', render: (o) => `#${o.id}` },
-          { key: 'customer', label: 'Customer', render: (o) => o.customer?.name || '--' },
+          { key: 'customer', label: 'Customer', render: (o) => o.customer?.name || o.guest_name || 'Walk-In' },
           { key: 'total_amount', label: 'Total', render: (o) => `P ${o.total_amount.toLocaleString()}` },
           { key: 'status', label: 'Status', render: (o) => (
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[o.status] || 'bg-gray-100 text-gray-800'}`}>
@@ -175,8 +177,10 @@ export default function Orders() {
               <div className="grid grid-cols-2 gap-8 mb-12">
                 <div>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Billed To</h3>
-                  <p className="font-bold text-gray-900">{selectedOrder.customer?.name}</p>
-                  <p className="text-sm text-gray-600">Customer ID: {selectedOrder.customer_id}</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.customer?.name || selectedOrder.guest_name || 'Walk-In Customer'}</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedOrder.customer_id ? `Customer ID: ${selectedOrder.customer_id}` : (selectedOrder.guest_phone ? `Contact: ${selectedOrder.guest_phone}` : 'No Contact Info')}
+                  </p>
                 </div>
                 <div className="text-right">
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Issued On</h3>
