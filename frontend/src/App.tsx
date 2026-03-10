@@ -21,6 +21,8 @@ import Staff from './pages/Staff';
 import ReceiptTest from './pages/ReceiptTest';
 import Inventory from './pages/Inventory';
 import SettingsPage from './pages/Settings';
+import DailyReport from './pages/DailyReport';
+import Branches from './pages/Branches';
 
 function App() {
   return (
@@ -44,6 +46,7 @@ function App() {
             {/* Admin only */}
             <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute requiredRole="admin"><Products /></ProtectedRoute>} />
+            <Route path="/daily-report" element={<ProtectedRoute requiredRole="admin"><DailyReport /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute requiredRole="admin"><Categories /></ProtectedRoute>} />
             <Route path="/brands" element={<ProtectedRoute requiredRole="admin"><Brands /></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute requiredRole="admin"><Inventory /></ProtectedRoute>} />
@@ -52,6 +55,7 @@ function App() {
             <Route path="/purchase-orders" element={<ProtectedRoute requiredRole="admin"><PurchaseOrders /></ProtectedRoute>} />
             <Route path="/logs" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
             <Route path="/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
+            <Route path="/branches" element={<ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
           </Route>
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -34,6 +35,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	response, err := h.AuthService.Register(input)
 	if err != nil {
+		log.Printf("[Registration Error] %v", err)
 		status := http.StatusInternalServerError
 		if err.Error() == "email already registered" {
 			status = http.StatusConflict

@@ -496,23 +496,35 @@ export default function POS() {
                 )}
 
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Payment Protocol</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['cash', 'gcash', 'card', 'bank_transfer'].map(method => (
-                      <button
-                        key={method}
-                        onClick={() => setPaymentMethod(method)}
-                        className={`p-3 rounded-xl border text-[10px] font-black uppercase transition-all ${
-                          paymentMethod === method 
-                          ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
-                          : 'bg-white text-gray-400 border-gray-200 hover:border-gray-900 hover:text-gray-900'
-                        }`}
-                      >
-                        {method.replace('_', ' ')}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Payment Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'cash', label: 'Cash' },
+                    { id: 'gcash', label: 'GCash' },
+                    { id: 'card', label: 'Credit Card' },
+                    { id: 'bank_transfer', label: 'Bank Transfer' },
+                    { id: 'dated_check', label: 'Dated Check' },
+                    { id: 'post_dated_check', label: 'Post-Dated Check' },
+                    { id: 'claimed_downpayment', label: 'Claimed Downpayment' },
+                    { id: 'goodyear_voucher', label: 'Goodyear Voucher' },
+                    { id: 'ewt', label: 'EWT' },
+                    { id: 'trade_in', label: 'Trade In' },
+                  ].map((method) => (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(method.id)}
+                      className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+                        paymentMethod === method.id
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
+                      }`}
+                    >
+                      {method.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
               </div>
             </div>
           </div>

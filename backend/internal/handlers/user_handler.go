@@ -22,17 +22,19 @@ func NewUserHandler(logService *services.LogService) *UserHandler {
 
 // UserResponse is used to return user data without the hash
 type UserResponse struct {
-	ID        uint   `json:"id"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"created_at"`
+	ID         uint   `json:"id"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	Role       string `json:"role"`
+	BranchID   uint   `json:"branch_id"`
+	BranchName string `json:"branch_name"`
+	CreatedAt  string `json:"created_at"`
 }
 
 // List fetches all registered users
 func (h *UserHandler) List(c *gin.Context) {
 	var users []models.User
-	if err := database.DB.Order("id desc").Find(&users).Error; err != nil {
+	if err := database.DB.Preload("Branch").Order("id desc").Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
@@ -41,11 +43,13 @@ func (h *UserHandler) List(c *gin.Context) {
 	var response []UserResponse
 	for _, u := range users {
 		response = append(response, UserResponse{
-			ID:        u.ID,
-			Name:      u.Name,
-			Email:     u.Email,
-			Role:      u.Role,
-			CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+			ID:         u.ID,
+			Name:       u.Name,
+			Email:      u.Email,
+			Role:       u.Role,
+			BranchID:   u.BranchID,
+			BranchName: u.Branch.Name,
+			CreatedAt:  u.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
@@ -159,6 +163,37 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User password reset successfully"})
+}
+
+// UpdateBranch changes a specific user's branch
+func (h *UserHandler) UpdateBranch(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		BranchID uint `json:"branch_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if err := database.DB.Model(&user).Update("branch_id", req.BranchID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update branch"})
+		return
+	}
+
+	currentUserID, _ := c.Get("userID")
+	if currentUserID != nil {
+		h.LogService.Record(currentUserID.(uint), "UPDATE_BRANCH", "User", id, fmt.Sprintf("Changed branch for %s to #%d", user.Name, req.BranchID), c.ClientIP())
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User branch updated successfully"})
 }
 
 // Delete permanently removes a user account

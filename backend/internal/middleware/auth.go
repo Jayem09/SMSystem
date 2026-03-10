@@ -53,7 +53,9 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		// Inject user info into Gin context
 		userID := uint(claims["user_id"].(float64))
+		branchID := uint(claims["branch_id"].(float64))
 		c.Set("userID", userID)
+		c.Set("branchID", branchID)
 		c.Set("userEmail", claims["email"].(string))
 		c.Set("userRole", claims["role"].(string))
 

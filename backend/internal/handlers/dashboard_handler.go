@@ -33,22 +33,23 @@ type Product_Performance struct {
 }
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
+	branchID, _ := c.Get("branchID")
 	var totalSales float64
 	var totalExpenses float64
 	var productCount int64
 	var orderCount int64
 	var customerCount int64
 
-	database.DB.Model(&models.Order{}).Select("SUM(total_amount)").Scan(&totalSales)
-	database.DB.Model(&models.Expense{}).Select("SUM(amount)").Scan(&totalExpenses)
-	database.DB.Model(&models.Product{}).Count(&productCount)
-	database.DB.Model(&models.Order{}).Count(&orderCount)
-	database.DB.Model(&models.Customer{}).Count(&customerCount)
+	database.DB.Model(&models.Order{}).Where("branch_id = ?", branchID).Select("SUM(total_amount)").Scan(&totalSales)
+	database.DB.Model(&models.Expense{}).Where("branch_id = ?", branchID).Select("SUM(amount)").Scan(&totalExpenses)
+	database.DB.Model(&models.Product{}).Count(&productCount) // Products remain global
+	database.DB.Model(&models.Order{}).Where("branch_id = ?", branchID).Count(&orderCount)
+	database.DB.Model(&models.Customer{}).Count(&customerCount) // Customers remain global for now
 
 	var salesTrend []DailySale
 	database.DB.Model(&models.Order{}).
 		Select("DATE(created_at) as date, SUM(total_amount) as amount").
-		Where("created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)").
+		Where("branch_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)", branchID).
 		Group("DATE(created_at)").
 		Order("date ASC").
 		Scan(&salesTrend)
@@ -59,7 +60,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 	var topAdvisors []SA_Performance
 	database.DB.Model(&models.Order{}).
 		Select("service_advisor_name as advisor_name, SUM(total_amount) as total_sales, COUNT(id) as order_count").
-		Where("DATE(created_at) = CURDATE() AND service_advisor_name != ''").
+		Where("branch_id = ? AND DATE(created_at) = CURDATE() AND service_advisor_name != ''", branchID).
 		Group("service_advisor_name").
 		Order("total_sales DESC").
 		Limit(5).
@@ -71,7 +72,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		Joins("JOIN orders ON orders.id = order_items.order_id").
 		Joins("JOIN products ON products.id = order_items.product_id").
 		Joins("LEFT JOIN categories ON categories.id = products.category_id").
-		Where("DATE(orders.created_at) = CURDATE()").
+		Where("orders.branch_id = ? AND DATE(orders.created_at) = CURDATE()", branchID).
 		Group("products.id").
 		Order("total_qty DESC").
 		Limit(5).

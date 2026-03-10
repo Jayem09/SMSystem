@@ -38,8 +38,8 @@ type LoginInput struct {
 
 // AuthResponse is returned after successful login/register.
 type AuthResponse struct {
-	Token string       `json:"token"`
-	User  models.User  `json:"user"`
+	Token string      `json:"token"`
+	User  models.User `json:"user"`
 }
 
 // Register creates a new user account.
@@ -60,15 +60,30 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
+	// Determine role (first user is admin, others are user)
+	var userCount int64
+	database.DB.Model(&models.User{}).Count(&userCount)
+	role := "user"
+	if userCount == 0 {
+		role = "admin"
+	}
+
+	// Fetch first available branch
+	var firstBranch models.Branch
+	if err := database.DB.First(&firstBranch).Error; err != nil {
+		return nil, errors.New("failed to find a default branch: " + err.Error())
+	}
+
 	user := models.User{
 		Name:     input.Name,
 		Email:    input.Email,
 		Password: string(hashedPassword),
-		Role:     "user",
+		Role:     role,
+		BranchID: firstBranch.ID,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		return nil, errors.New("failed to create user")
+		return nil, errors.New("failed to create user record: " + err.Error())
 	}
 
 	// Generate token
@@ -108,7 +123,7 @@ func (s *AuthService) Login(input LoginInput) (*AuthResponse, error) {
 // GetUserByID retrieves a user by their ID.
 func (s *AuthService) GetUserByID(userID uint) (*models.User, error) {
 	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
+	if err := database.DB.Preload("Branch").First(&user, userID).Error; err != nil {
 		return nil, errors.New("user not found")
 	}
 	return &user, nil
@@ -122,11 +137,12 @@ func (s *AuthService) GenerateToken(user models.User) (string, error) {
 	}
 
 	claims := jwt.MapClaims{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"role":    user.Role,
-		"exp":     time.Now().Add(duration).Unix(),
-		"iat":     time.Now().Unix(),
+		"user_id":   user.ID,
+		"email":     user.Email,
+		"role":      user.Role,
+		"branch_id": user.BranchID,
+		"exp":       time.Now().Add(duration).Unix(),
+		"iat":       time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

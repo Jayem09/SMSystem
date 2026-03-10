@@ -55,7 +55,8 @@ type checkoutInput struct {
 
 // List returns all orders with their items, customer, and user.
 func (h *OrderHandler) List(c *gin.Context) {
-	query := database.DB.Preload("Customer").Preload("User").Preload("Items.Product")
+	branchID, _ := c.Get("branchID")
+	query := database.DB.Where("branch_id = ?", branchID).Preload("Customer").Preload("User").Preload("Items.Product")
 
 	// Filter by status
 	if status := c.Query("status"); status != "" {
@@ -106,8 +107,9 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		orderStatus = input.Status
 	}
 
-	// Get the authenticated user ID
+	// Get the authenticated user ID and branch ID
 	userID, exists := c.Get("userID")
+	branchID, _ := c.Get("branchID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
@@ -124,6 +126,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 
 	// Run everything in a transaction
 	var order models.Order
+	order.BranchID = branchID.(uint)
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		var totalAmount float64
 		var orderItems []models.OrderItem

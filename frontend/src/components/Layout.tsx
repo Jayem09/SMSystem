@@ -10,6 +10,7 @@ const navItems = [
   { to: '/inventory', label: 'Inventory Management', roles: ['admin'] },
   { to: '/orders', label: 'Orders', roles: ['admin', 'cashier'] },
   { to: '/products', label: 'Products', roles: ['admin'] },
+  { to: '/daily-report', label: 'Daily Summary', roles: ['admin'] },
   { to: '/categories', label: 'Categories', roles: ['admin'] },
   { to: '/brands', label: 'Brands', roles: ['admin'] },
   { to: '/suppliers', label: 'Suppliers', roles: ['admin'] },
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/expenses', label: 'Expenses', roles: ['admin'] },
   { to: '/logs', label: 'Activity Logs', roles: ['admin'] },
   { to: '/staff', label: 'Staff & Roles', roles: ['admin'] },
+  { to: '/branches', label: 'Branches', roles: ['admin'] },
 ];
 
 export default function Layout() {
@@ -34,7 +36,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col fixed h-screen">
+      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col fixed h-screen no-print">
         <div className="px-4 py-4 border-b border-gray-200 flex justify-between items-center">
           <h1 className="text-lg font-semibold text-gray-900">SMSystem</h1>
           {user?.role === 'admin' && (
@@ -66,7 +68,14 @@ export default function Layout() {
 
         <div className="border-t border-gray-200 px-4 py-3">
           <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-          <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
+            {user?.branch && (
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
+                {user.branch.name}
+              </p>
+            )}
+          </div>
           <button
             onClick={handleLogout}
             className="mt-2 w-full px-3 py-1.5 text-xs border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"

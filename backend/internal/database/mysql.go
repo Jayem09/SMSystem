@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"smsystem-backend/internal/config"
 	"smsystem-backend/internal/models"
@@ -16,13 +17,54 @@ var DB *gorm.DB
 
 // Connect initializes the MySQL database connection and runs auto-migrations.
 func Connect(cfg *config.Config) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		cfg.DBUser,
-		cfg.DBPassword,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-	)
+	var dsn string
+
+	if cfg.DatabaseURL != "" {
+		// Use the full URL if provided (standard for cloud)
+		dsn = cfg.DatabaseURL
+		// Railway and other providers often give mysql://... strings.
+		// Go's MySQL driver prefers: user:pass@tcp(host:port)/db
+		if strings.HasPrefix(dsn, "mysql://") {
+			dsn = strings.TrimPrefix(dsn, "mysql://")
+			// Split user:pass and host:port/db
+			parts := strings.SplitN(dsn, "@", 2)
+			if len(parts) == 2 {
+				credentials := parts[0]
+				remainder := parts[1]
+				// Split host:port and db
+				subParts := strings.SplitN(remainder, "/", 2)
+				if len(subParts) == 2 {
+					hostPort := subParts[0]
+					dbAndQuery := subParts[1]
+					dsn = fmt.Sprintf("%s@tcp(%s)/%s", credentials, hostPort, dbAndQuery)
+				}
+			}
+		}
+	} else {
+		// Fallback to individual fields
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+			cfg.DBUser,
+			cfg.DBPassword,
+			cfg.DBHost,
+			cfg.DBPort,
+			cfg.DBName,
+		)
+	}
+
+	// Always ensure required parameters are present
+	if !strings.Contains(dsn, "parseTime=True") {
+		if strings.Contains(dsn, "?") {
+			dsn += "&parseTime=True"
+		} else {
+			dsn += "?parseTime=True"
+		}
+	}
+	if !strings.Contains(dsn, "loc=Local") {
+		dsn += "&loc=Local"
+	}
+	if !strings.Contains(dsn, "charset=utf8mb4") {
+		dsn += "&charset=utf8mb4"
+	}
 
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
@@ -36,6 +78,7 @@ func Connect(cfg *config.Config) {
 
 	// Auto-migrate models
 	if err := DB.AutoMigrate(
+		&models.Branch{},
 		&models.User{},
 		&models.Category{},
 		&models.Brand{},
@@ -57,4 +100,16 @@ func Connect(cfg *config.Config) {
 	}
 
 	log.Println(" Database migration completed")
+
+	// Seed default branch if none exist
+	var count int64
+	DB.Model(&models.Branch{}).Count(&count)
+	if count == 0 {
+		defaultBranch := models.Branch{
+			Name: "Default Branch",
+			Code: "MAIN-01",
+		}
+		DB.Create(&defaultBranch)
+		log.Println(" Default branch seeded")
+	}
 }

@@ -11,6 +11,11 @@ interface StaffUser {
   name: string;
   email: string;
   role: string;
+  branch_id: number;
+  branch?: {
+    id: number;
+    name: string;
+  };
   created_at: string;
 }
 
@@ -19,6 +24,7 @@ export default function Staff() {
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [branches, setBranches] = useState<{id: number, name: string}[]>([]);
   
   // Delete Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -43,8 +49,18 @@ export default function Staff() {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const res = await api.get('/api/branches');
+      setBranches(res.data);
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchBranches();
   }, []);
 
   const handleRoleChange = async (userId: number, newRole: string) => {
@@ -53,6 +69,16 @@ export default function Staff() {
       fetchUsers();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to update user role');
+      fetchUsers();
+    }
+  };
+
+  const handleBranchChange = async (userId: number, branchId: number) => {
+    try {
+      await api.put(`/api/users/${userId}/branch`, { branch_id: branchId });
+      fetchUsers();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to update user branch');
       fetchUsers();
     }
   };
@@ -143,6 +169,21 @@ export default function Staff() {
           <option value="cashier">Cashier (Staff)</option>
           <option value="purchasing">Purchasing (Inventory)</option>
           <option value="user">Unverified User</option>
+        </select>
+      )
+    },
+    { 
+      key: 'branch', 
+      label: 'Branch Assignment',
+      render: (item: StaffUser): ReactNode => (
+         <select
+          value={item.branch_id}
+          onChange={(e) => handleBranchChange(item.id, parseInt(e.target.value))}
+          className="text-sm rounded-lg border-gray-300 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-gray-700 bg-gray-50 cursor-pointer"
+        >
+          {branches.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
         </select>
       )
     },

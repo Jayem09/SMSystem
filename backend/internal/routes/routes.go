@@ -29,6 +29,8 @@ type Handlers struct {
 	User          *handlers.UserHandler
 	Inventory     *handlers.InventoryHandler
 	Settings      *handlers.SettingsHandler
+	Report        *handlers.ReportHandler
+	Branch        *handlers.BranchHandler
 }
 
 // Setup configures all API routes.
@@ -181,6 +183,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			{
 				users.GET("", h.User.List)
 				users.PUT("/:id/role", h.User.UpdateRole)
+				users.PUT("/:id/branch", h.User.UpdateBranch)
 				users.PUT("/:id/reset-password", h.User.ResetPassword)
 				users.DELETE("/:id", h.User.Delete)
 			}
@@ -190,6 +193,20 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			{
 				settings.GET("", h.Settings.GetAll)
 				settings.POST("", h.Settings.UpdateBulk)
+			}
+
+			// ─── Reports ───
+			reports := admin.Group("/reports")
+			{
+				reports.GET("/daily-summary", h.Report.GetDailySummary)
+			}
+
+			// ─── Branches ───
+			branches := admin.Group("/branches")
+			{
+				branches.GET("", h.Branch.List)
+				branches.POST("", h.Branch.Create)
+				branches.PUT("/:id", h.Branch.Update)
 			}
 		}
 	}

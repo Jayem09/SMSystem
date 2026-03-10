@@ -24,8 +24,9 @@ func NewInventoryHandler(logService *services.LogService) *InventoryHandler {
 
 // GetWarehouses returns all configured physical locations
 func (h *InventoryHandler) GetWarehouses(c *gin.Context) {
+	branchID, _ := c.Get("branchID")
 	var warehouses []models.Warehouse
-	if err := database.DB.Find(&warehouses).Error; err != nil {
+	if err := database.DB.Where("branch_id = ?", branchID).Find(&warehouses).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch warehouses"})
 		return
 	}
@@ -46,11 +47,14 @@ func (h *InventoryHandler) GetStockLevels(c *gin.Context) {
 	}
 
 	var results []StockLevelResult
+	branchID, _ := c.Get("branchID")
+
 	// Aggregate from the batches table. We only care about products that have stock or had stock.
 	query := database.DB.Table("batches").
 		Select("batches.product_id, products.name as product_name, products.size as product_size, batches.warehouse_id, warehouses.name as warehouse_name, SUM(batches.quantity) as total_stock, MIN(batches.expiry_date) as closest_expiry, COUNT(batches.id) as expiring_batches").
 		Joins("JOIN products ON batches.product_id = products.id").
 		Joins("JOIN warehouses ON batches.warehouse_id = warehouses.id").
+		Where("batches.branch_id = ?", branchID).
 		Group("batches.product_id, batches.warehouse_id")
 
 	if search := c.Query("search"); search != "" {
@@ -67,8 +71,9 @@ func (h *InventoryHandler) GetStockLevels(c *gin.Context) {
 
 // GetMovementLogs returns the immutable history of inventory changes
 func (h *InventoryHandler) GetMovementLogs(c *gin.Context) {
+	branchID, _ := c.Get("branchID")
 	var logs []models.StockMovement
-	query := database.DB.Preload("Product").Preload("Batch").Preload("Warehouse").Preload("User").
+	query := database.DB.Where("branch_id = ?", branchID).Preload("Product").Preload("Batch").Preload("Warehouse").Preload("User").
 		Order("created_at DESC")
 
 	if productID := c.Query("product_id"); productID != "" {
@@ -106,7 +111,9 @@ func (h *InventoryHandler) StockIn(c *gin.Context) {
 	}
 
 	userIDValue, _ := c.Get("userID")
+	branchIDValue, _ := c.Get("branchID")
 	userID := userIDValue.(uint)
+	branchID := branchIDValue.(uint)
 
 	tx := database.DB.Begin()
 
@@ -114,6 +121,7 @@ func (h *InventoryHandler) StockIn(c *gin.Context) {
 	batch := models.Batch{
 		ProductID:   input.ProductID,
 		WarehouseID: input.WarehouseID,
+		BranchID:    branchID,
 		BatchNumber: input.BatchNumber,
 		Quantity:    input.Quantity,
 		ExpiryDate:  input.ExpiryDate,
@@ -130,6 +138,7 @@ func (h *InventoryHandler) StockIn(c *gin.Context) {
 		ProductID:   input.ProductID,
 		BatchID:     &batch.ID,
 		WarehouseID: input.WarehouseID,
+		BranchID:    branchID,
 		UserID:      &userID,
 		Type:        models.MovementTypeIn,
 		Quantity:    input.Quantity, // Positive
@@ -170,13 +179,15 @@ func (h *InventoryHandler) StockOut(c *gin.Context) {
 	}
 
 	userIDValue, _ := c.Get("userID")
+	branchIDValue, _ := c.Get("branchID")
 	userID := userIDValue.(uint)
+	branchID := branchIDValue.(uint)
 
 	tx := database.DB.Begin()
 
-	// Find available batches for this product in this warehouse, ordered by expiry (oldest first)
+	// Find available batches for this product in this warehouse for THIS branch, ordered by expiry (oldest first)
 	var batches []models.Batch
-	if err := tx.Where("product_id = ? AND warehouse_id = ? AND quantity > 0", input.ProductID, input.WarehouseID).
+	if err := tx.Where("product_id = ? AND warehouse_id = ? AND branch_id = ? AND quantity > 0", input.ProductID, input.WarehouseID, branchID).
 		Order("expiry_date ASC, created_at ASC").
 		Find(&batches).Error; err != nil {
 		tx.Rollback()
@@ -208,6 +219,7 @@ func (h *InventoryHandler) StockOut(c *gin.Context) {
 			ProductID:   input.ProductID,
 			BatchID:     &batches[i].ID,
 			WarehouseID: input.WarehouseID,
+			BranchID:    branchID,
 			UserID:      &userID,
 			Type:        models.MovementTypeOut,
 			Quantity:    -deduct, // Negative for OUT
@@ -258,7 +270,9 @@ func (h *InventoryHandler) AdjustStock(c *gin.Context) {
 	}
 
 	userIDValue, _ := c.Get("userID")
+	branchIDValue, _ := c.Get("branchID")
 	userID := userIDValue.(uint)
+	branchID := branchIDValue.(uint)
 
 	tx := database.DB.Begin()
 
@@ -289,6 +303,7 @@ func (h *InventoryHandler) AdjustStock(c *gin.Context) {
 		ProductID:   batch.ProductID,
 		BatchID:     &batch.ID,
 		WarehouseID: batch.WarehouseID,
+		BranchID:    branchID,
 		UserID:      &userID,
 		Type:        models.MovementTypeAdjustment,
 		Quantity:    difference,
@@ -303,14 +318,14 @@ func (h *InventoryHandler) AdjustStock(c *gin.Context) {
 
 	// Update the global Product stock cache
 	if difference > 0 {
-		if err := tx.Model(&models.Product{}).Where("id = ?", batch.ProductID).UpdateColumn("stock", gorm.Expr("stock + ?", difference)).Error; err != nil {
+		if err := tx.Model(&models.Product{}).Where("id = ? AND branch_id = ?", batch.ProductID, branchID).UpdateColumn("stock", gorm.Expr("stock + ?", difference)).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update total product stock"})
 			return
 		}
 	} else {
 		// difference is negative, so adding it actually subtracts
-		if err := tx.Model(&models.Product{}).Where("id = ?", batch.ProductID).UpdateColumn("stock", gorm.Expr("stock - ?", -difference)).Error; err != nil {
+		if err := tx.Model(&models.Product{}).Where("id = ? AND branch_id = ?", batch.ProductID, branchID).UpdateColumn("stock", gorm.Expr("stock - ?", -difference)).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update total product stock"})
 			return

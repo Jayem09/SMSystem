@@ -86,7 +86,11 @@ func (h *ProductHandler) List(c *gin.Context) {
 	}
 
 	var products []models.Product
-	if err := query.Order("created_at DESC").Find(&products).Error; err != nil {
+	branchID, _ := c.Get("branchID")
+
+	// Use a subquery to calculate branch-specific stock
+	if err := query.Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		Order("created_at DESC").Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
 		return
 	}
@@ -102,7 +106,11 @@ func (h *ProductHandler) GetByID(c *gin.Context) {
 	}
 
 	var product models.Product
-	if err := database.DB.Preload("Category").Preload("Brand").First(&product, id).Error; err != nil {
+	branchID, _ := c.Get("branchID")
+
+	if err := database.DB.Preload("Category").Preload("Brand").
+		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		First(&product, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 		return
 	}

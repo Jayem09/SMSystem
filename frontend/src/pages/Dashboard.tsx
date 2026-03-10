@@ -169,7 +169,14 @@ export default function Dashboard() {
       {/* Header */}
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Business Insights</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+            Business Insights
+            {user?.branch && (
+              <span className="text-sm font-black bg-indigo-500 text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                {user.branch.name}
+              </span>
+            )}
+          </h1>
           <p className="text-gray-500 mt-1">Hello {user?.name}, here's what's happening today.</p>
         </div>
         <div className="hidden md:block text-right">

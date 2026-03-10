@@ -27,7 +27,9 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
+	branchID, _ := c.Get("branchID")
 	expense.UserID = userID.(uint)
+	expense.BranchID = branchID.(uint)
 
 	// Start Transaction
 	tx := database.DB.Begin()
@@ -60,8 +62,9 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 
 // List handles GET /api/expenses
 func (h *ExpenseHandler) List(c *gin.Context) {
+	branchID, _ := c.Get("branchID")
 	var expenses []models.Expense
-	if err := database.DB.Preload("User").Preload("Product").Order("expense_date desc").Find(&expenses).Error; err != nil {
+	if err := database.DB.Where("branch_id = ?", branchID).Preload("User").Preload("Product").Order("expense_date desc").Find(&expenses).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
 	}

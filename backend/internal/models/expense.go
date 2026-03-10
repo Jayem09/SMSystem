@@ -12,6 +12,7 @@ type Expense struct {
 	Category    string    `gorm:"size:100;not null" json:"category"` // "Rent", "Salary", "Utilities", "Other", "Inventory"
 	ExpenseDate time.Time `gorm:"not null" json:"expense_date"`
 	UserID      uint      `gorm:"index" json:"user_id"`
+	BranchID    uint      `gorm:"index" json:"branch_id"`
 	ProductID   *uint     `gorm:"index" json:"product_id"`
 	Quantity    int       `gorm:"default:0" json:"quantity"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`

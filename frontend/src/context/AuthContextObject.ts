@@ -1,10 +1,18 @@
 import { createContext } from 'react';
 
+export interface Branch {
+  id: number;
+  name: string;
+  code: string;
+}
+
 export interface User {
   id: number;
   name: string;
   email: string;
   role: string;
+  branch_id: number;
+  branch?: Branch;
   created_at: string;
 }
 
