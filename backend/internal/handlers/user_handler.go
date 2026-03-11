@@ -31,10 +31,17 @@ type UserResponse struct {
 	CreatedAt  string `json:"created_at"`
 }
 
-// List fetches all registered users
 func (h *UserHandler) List(c *gin.Context) {
 	var users []models.User
-	if err := database.DB.Preload("Branch").Order("id desc").Find(&users).Error; err != nil {
+	query := database.DB.Preload("Branch").Order("id desc")
+
+	isSuperAdmin, _ := c.Get("isSuperAdmin")
+	if isSuperAdmin != true {
+		branchID, _ := c.Get("branchID")
+		query = query.Where("branch_id = ?", branchID)
+	}
+
+	if err := query.Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
@@ -53,7 +60,7 @@ func (h *UserHandler) List(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{"users": response})
 }
 
 // GetStaffList fetches all users (ID and Name only) for selection dropdowns
@@ -101,9 +108,19 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 	// Prevent removing the last admin (basic safety check)
 	if user.Role == "admin" && req.Role != "admin" {
 		var adminCount int64
-		database.DB.Model(&models.User{}).Where("role = ?", "admin").Count(&adminCount)
+		database.DB.Model(&models.User{}).Where("role = ? AND branch_id = ?", "admin", user.BranchID).Count(&adminCount)
 		if adminCount <= 1 {
-			c.JSON(http.StatusConflict, gin.H{"error": "Cannot demote the last admin in the system."})
+			c.JSON(http.StatusConflict, gin.H{"error": "Cannot demote the last admin of this branch."})
+			return
+		}
+	}
+
+	// Branch check for non-super-admins
+	isSuperAdmin, _ := c.Get("isSuperAdmin")
+	if isSuperAdmin != true {
+		branchID, _ := c.Get("branchID")
+		if user.BranchID != branchID.(uint) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You can only manage staff within your branch"})
 			return
 		}
 	}
@@ -177,6 +194,13 @@ func (h *UserHandler) UpdateBranch(c *gin.Context) {
 		return
 	}
 
+	// Only super_admin can change branches
+	isSuperAdmin, _ := c.Get("isSuperAdmin")
+	if isSuperAdmin != true {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only Super Admin can reassign staff to different branches"})
+		return
+	}
+
 	var user models.User
 	if err := database.DB.First(&user, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -204,6 +228,16 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	if err := database.DB.First(&user, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
+	}
+
+	// Branch check for non-super-admins
+	isSuperAdmin, _ := c.Get("isSuperAdmin")
+	if isSuperAdmin != true {
+		branchID, _ := c.Get("branchID")
+		if user.BranchID != branchID.(uint) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete staff within your branch"})
+			return
+		}
 	}
 
 	// Prevent admin self-deletion

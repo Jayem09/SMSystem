@@ -12,6 +12,7 @@ interface StaffUser {
   email: string;
   role: string;
   branch_id: number;
+  branch_name: string;
   branch?: {
     id: number;
     name: string;
@@ -41,7 +42,7 @@ export default function Staff() {
   const fetchUsers = async () => {
     try {
       const res = await api.get('/api/users');
-      setUsers(res.data);
+      setUsers(res.data.users);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {
@@ -52,7 +53,7 @@ export default function Staff() {
   const fetchBranches = async () => {
     try {
       const res = await api.get('/api/branches');
-      setBranches(res.data);
+      setBranches(res.data.branches || []);
     } catch (error) {
       console.error('Failed to fetch branches:', error);
     }
@@ -156,16 +157,17 @@ export default function Staff() {
     { 
       key: 'role', 
       label: 'System Role',
-      render: (item: StaffUser): ReactNode => (
+       render: (item: StaffUser): ReactNode => (
          <select
           value={item.role}
           onChange={(e) => handleRoleChange(item.id, e.target.value)}
-          disabled={item.id === currentUser?.id}
+          disabled={item.id === currentUser?.id || (currentUser?.role !== 'super_admin' && item.role === 'super_admin')}
           className={`text-sm rounded-lg border-gray-300 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500 font-medium ${
-            item.role === 'admin' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-gray-700 bg-gray-50'
-          } ${item.id === currentUser?.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            item.role === 'admin' || item.role === 'super_admin' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-gray-700 bg-gray-50'
+          } ${(item.id === currentUser?.id || (currentUser?.role !== 'super_admin' && item.role === 'super_admin')) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <option value="admin">Administrator (Owner)</option>
+          {currentUser?.role === 'super_admin' && <option value="super_admin">Super Admin (Owner)</option>}
+          <option value="admin">Branch Admin (Manager)</option>
           <option value="cashier">Cashier (Staff)</option>
           <option value="purchasing">Purchasing (Inventory)</option>
           <option value="user">Unverified User</option>
@@ -176,15 +178,21 @@ export default function Staff() {
       key: 'branch', 
       label: 'Branch Assignment',
       render: (item: StaffUser): ReactNode => (
-         <select
-          value={item.branch_id}
-          onChange={(e) => handleBranchChange(item.id, parseInt(e.target.value))}
-          className="text-sm rounded-lg border-gray-300 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-gray-700 bg-gray-50 cursor-pointer"
-        >
-          {branches.map(b => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
+        currentUser?.role === 'super_admin' ? (
+          <select
+            value={item.branch_id}
+            onChange={(e) => handleBranchChange(item.id, parseInt(e.target.value))}
+            className="text-sm rounded-lg border-gray-300 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-gray-700 bg-gray-50 cursor-pointer"
+          >
+            {branches.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            {item.branch_name}
+          </span>
+        )
       )
     },
     { key: 'created_at', label: 'Registered On' },

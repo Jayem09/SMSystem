@@ -60,13 +60,8 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
-	// Determine role (first user is admin, others are user)
-	var userCount int64
-	database.DB.Model(&models.User{}).Count(&userCount)
+	// Default role is always 'user' (unverified)
 	role := "user"
-	if userCount == 0 {
-		role = "admin"
-	}
 
 	// Fetch first available branch
 	var firstBranch models.Branch

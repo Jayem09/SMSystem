@@ -33,7 +33,7 @@ export default function Branches() {
   const fetchBranches = async () => {
     try {
       const res = await api.get('/api/branches');
-      setBranches(res.data);
+      setBranches(res.data.branches);
     } catch (error) {
       console.error('Failed to fetch branches:', error);
     } finally {

@@ -3,22 +3,22 @@ import { useAuth } from '../hooks/useAuth';
 import { Settings } from 'lucide-react';
 
 const navItems = [
-  { to: '/pos', label: 'POS Checkout', roles: ['admin', 'cashier'] },
-  { to: '/dashboard', label: 'Dashboard', roles: ['admin', 'cashier'] },
-  { to: '/customers', label: 'Customers', roles: ['admin', 'cashier'] },
-  { to: '/crm', label: 'CRM Analysis', roles: ['admin'] },
-  { to: '/inventory', label: 'Inventory Management', roles: ['admin'] },
-  { to: '/orders', label: 'Orders', roles: ['admin', 'cashier'] },
-  { to: '/products', label: 'Products', roles: ['admin'] },
-  { to: '/daily-report', label: 'Daily Summary', roles: ['admin'] },
-  { to: '/categories', label: 'Categories', roles: ['admin'] },
-  { to: '/brands', label: 'Brands', roles: ['admin'] },
-  { to: '/suppliers', label: 'Suppliers', roles: ['admin'] },
-  { to: '/purchase-orders', label: 'Purchase Orders', roles: ['admin'] },
-  { to: '/expenses', label: 'Expenses', roles: ['admin'] },
-  { to: '/logs', label: 'Activity Logs', roles: ['admin'] },
-  { to: '/staff', label: 'Staff & Roles', roles: ['admin'] },
-  { to: '/branches', label: 'Branches', roles: ['admin'] },
+  { to: '/pos', label: 'POS Checkout', roles: ['super_admin', 'admin', 'cashier'] },
+  { to: '/dashboard', label: 'Dashboard', roles: ['super_admin', 'admin', 'cashier'] },
+  { to: '/customers', label: 'Customers', roles: ['super_admin', 'admin', 'cashier'] },
+  { to: '/crm', label: 'CRM Analysis', roles: ['super_admin', 'admin'] },
+  { to: '/inventory', label: 'Inventory Management', roles: ['super_admin', 'admin'] },
+  { to: '/orders', label: 'Orders', roles: ['super_admin', 'admin', 'cashier'] },
+  { to: '/products', label: 'Products', roles: ['super_admin', 'admin'] },
+  { to: '/daily-report', label: 'Daily Summary', roles: ['super_admin', 'admin'] },
+  { to: '/categories', label: 'Categories', roles: ['super_admin', 'admin'] },
+  { to: '/brands', label: 'Brands', roles: ['super_admin', 'admin'] },
+  { to: '/suppliers', label: 'Suppliers', roles: ['super_admin', 'admin'] },
+  { to: '/purchase-orders', label: 'Purchase Orders', roles: ['super_admin', 'admin'] },
+  { to: '/expenses', label: 'Expenses', roles: ['super_admin', 'admin'] },
+  { to: '/logs', label: 'Activity Logs', roles: ['super_admin', 'admin'] },
+  { to: '/staff', label: 'Staff & Roles', roles: ['super_admin', 'admin'] },
+  { to: '/branches', label: 'Branches', roles: ['super_admin'] },
 ];
 
 export default function Layout() {
@@ -39,7 +39,7 @@ export default function Layout() {
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col fixed h-screen no-print">
         <div className="px-4 py-4 border-b border-gray-200 flex justify-between items-center">
           <h1 className="text-lg font-semibold text-gray-900">SMSystem</h1>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'super_admin') && (
             <Link to="/settings" className="text-gray-400 hover:text-gray-900 transition-colors" title="Settings">
               <Settings className="w-5 h-5" />
             </Link>

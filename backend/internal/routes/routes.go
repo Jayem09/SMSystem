@@ -109,9 +109,9 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			// Modifications require admin
 		}
 
-		// ─── Admin-only routes ───
+		// ─── Admin/SuperAdmin shared routes ───
 		admin := protected.Group("")
-		admin.Use(middleware.RequireRole("admin"))
+		admin.Use(middleware.RequireRole("admin", "super_admin"))
 		{
 			// Category CUD
 			admin.POST("/categories", h.Category.Create)
@@ -177,7 +177,6 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 				purchaseOrders.PUT("/:id/receive", h.PurchaseOrder.Receive)
 				purchaseOrders.DELETE("/:id", h.PurchaseOrder.Delete)
 			}
-
 			// ─── Users (Staff Management) ───
 			users := admin.Group("/users")
 			{
@@ -201,12 +200,17 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 				reports.GET("/daily-summary", h.Report.GetDailySummary)
 			}
 
-			// ─── Branches ───
-			branches := admin.Group("/branches")
+			// ─── Super Admin ONLY routes ───
+			superAdmin := admin.Group("")
+			superAdmin.Use(middleware.RequireRole("super_admin"))
 			{
-				branches.GET("", h.Branch.List)
-				branches.POST("", h.Branch.Create)
-				branches.PUT("/:id", h.Branch.Update)
+				// ─── Branches ───
+				branches := superAdmin.Group("/branches")
+				{
+					branches.GET("", h.Branch.List)
+					branches.POST("", h.Branch.Create)
+					branches.PUT("/:id", h.Branch.Update)
+				}
 			}
 		}
 	}

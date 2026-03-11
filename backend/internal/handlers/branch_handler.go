@@ -25,7 +25,7 @@ func (h *BranchHandler) List(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch branches"})
 		return
 	}
-	c.JSON(http.StatusOK, branches)
+	c.JSON(http.StatusOK, gin.H{"branches": branches})
 }
 
 // Create creates a new branch
