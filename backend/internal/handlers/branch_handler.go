@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type BranchHandler struct {
@@ -36,8 +37,25 @@ func (h *BranchHandler) Create(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Create(&branch).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create branch"})
+	// Start transaction to create branch and its default warehouse
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&branch).Error; err != nil {
+			return err
+		}
+
+		defaultWarehouse := models.Warehouse{
+			Name:     "Main Warehouse",
+			BranchID: branch.ID,
+			Address:  "Default Location",
+		}
+		if err := tx.Create(&defaultWarehouse).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create branch and warehouse"})
 		return
 	}
 

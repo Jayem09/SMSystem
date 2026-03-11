@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"smsystem-backend/internal/config"
 	"smsystem-backend/internal/models"
@@ -72,6 +73,14 @@ func Connect(cfg *config.Config) {
 	})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Configure Connection Pool to prevent TiDB idle timeouts
+	sqlDB, err := DB.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	}
 
 	log.Println(" Database connected successfully")

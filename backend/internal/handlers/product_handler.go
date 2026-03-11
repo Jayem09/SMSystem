@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
 	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type ProductHandler struct {
@@ -143,7 +145,7 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		Name:        input.Name,
 		Description: input.Description,
 		Price:       input.Price,
-		Stock:       input.Stock,
+		Stock:       0, // We set 0 here because actual stock is handled via Batch if > 0
 		Size:        input.Size,
 		ParentID:    input.ParentID,
 		ImageURL:    input.ImageURL,
@@ -161,17 +163,68 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		IsService:   input.IsService,
 	}
 
-	if err := database.DB.Create(&product).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
+	branchID, _ := c.Get("branchID")
+	userIDValue, _ := c.Get("userID")
+
+	// Start transaction to create product and initial batch atomicaly
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&product).Error; err != nil {
+			return err
+		}
+
+		// If stock is specified and it's not a service, create an initial batch in the default warehouse
+		if input.Stock > 0 && !input.IsService {
+			var warehouse models.Warehouse
+			if err := tx.Where("branch_id = ?", branchID).First(&warehouse).Error; err != nil {
+				return fmt.Errorf("no warehouse found for this branch to store initial stock")
+			}
+
+			batch := models.Batch{
+				ProductID:   product.ID,
+				WarehouseID: warehouse.ID,
+				BranchID:    branchID.(uint),
+				BatchNumber: "INITIAL",
+				Quantity:    input.Stock,
+			}
+			if err := tx.Create(&batch).Error; err != nil {
+				return err
+			}
+
+			var userID *uint
+			if userIDValue != nil {
+				uid := userIDValue.(uint)
+				userID = &uid
+			}
+
+			movement := models.StockMovement{
+				ProductID:   product.ID,
+				BatchID:     &batch.ID,
+				WarehouseID: warehouse.ID,
+				BranchID:    branchID.(uint),
+				UserID:      userID,
+				Type:        models.MovementTypeIn,
+				Quantity:    input.Stock,
+				Reference:   "Initial Stock upon Creation",
+			}
+			if err := tx.Create(&movement).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product and initialize stock: " + err.Error()})
 		return
 	}
 
-	// Reload with relationships
-	database.DB.Preload("Category").Preload("Brand").First(&product, product.ID)
+	// Reload with relationships AND calculated stock
+	database.DB.Preload("Category").Preload("Brand").
+		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		First(&product, product.ID)
 
-	userIDValue, _ := c.Get("userID")
 	if userIDValue != nil {
-		h.LogService.Record(userIDValue.(uint), "CREATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Created product: %s", product.Name), c.ClientIP())
+		h.LogService.Record(userIDValue.(uint), "CREATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Created product: %s with initial stock %d", product.Name, input.Stock), c.ClientIP())
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Product created", "product": product})
@@ -201,7 +254,6 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	product.Name = input.Name
 	product.Description = input.Description
 	product.Price = input.Price
-	product.Stock = input.Stock
 	product.Size = input.Size
 	product.ParentID = input.ParentID
 	product.ImageURL = input.ImageURL
@@ -218,21 +270,85 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	product.PlyRating = input.PlyRating
 	product.IsService = input.IsService
 
-	if err := database.DB.Save(&product).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
+	branchID, _ := c.Get("branchID")
+	userIDValue, _ := c.Get("userID")
+
+	// Start transaction to handle metadata update and potential stock adjustment
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		// Calculate current stock from ledger BEFORE saving anything
+		var currentStock int
+		tx.Model(&models.Batch{}).
+			Where("product_id = ? AND branch_id = ?", product.ID, branchID).
+			Select("COALESCE(SUM(quantity), 0)").
+			Row().Scan(&currentStock)
+
+		if err := tx.Save(&product).Error; err != nil {
+			return err
+		}
+
+		// Smart Stock Sync: If requested stock differs from ledger, create adjustment
+		if !input.IsService && input.Stock != currentStock {
+			diff := input.Stock - currentStock
+
+			var warehouse models.Warehouse
+			if err := tx.Where("branch_id = ?", branchID).First(&warehouse).Error; err != nil {
+				return fmt.Errorf("no warehouse found for this branch to store adjustment")
+			}
+
+			// Create an adjustment batch
+			batch := models.Batch{
+				ProductID:   product.ID,
+				WarehouseID: warehouse.ID,
+				BranchID:    branchID.(uint),
+				BatchNumber: fmt.Sprintf("ADJ-%s", time.Now().Format("20060102")),
+				Quantity:    diff,
+			}
+			if err := tx.Create(&batch).Error; err != nil {
+				return err
+			}
+
+			var userID *uint
+			if userIDValue != nil {
+				uid := userIDValue.(uint)
+				userID = &uid
+			}
+
+			movement := models.StockMovement{
+				ProductID:   product.ID,
+				BatchID:     &batch.ID,
+				WarehouseID: warehouse.ID,
+				BranchID:    branchID.(uint),
+				UserID:      userID,
+				Type:        models.MovementTypeAdjustment,
+				Quantity:    diff,
+				Reference:   fmt.Sprintf("Direct Edit Sync (From %d to %d)", currentStock, input.Stock),
+			}
+			if err := tx.Create(&movement).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product and sync stock: " + err.Error()})
 		return
 	}
 
-	userIDValue, _ := c.Get("userID")
-	if userIDValue != nil {
+	userIDValue, exists := c.Get("userID")
+	if exists {
 		if oldPrice != product.Price {
 			h.LogService.Record(userIDValue.(uint), "UPDATE_PRICE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Price changed for %s: P%.2f -> P%.2f", product.Name, oldPrice, product.Price), c.ClientIP())
 		} else {
-			h.LogService.Record(userIDValue.(uint), "UPDATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Updated details for %s", product.Name), c.ClientIP())
+			h.LogService.Record(userIDValue.(uint), "UPDATE", "Product", strconv.Itoa(int(product.ID)), fmt.Sprintf("Updated details/stock for %s", product.Name), c.ClientIP())
 		}
 	}
 
-	database.DB.Preload("Category").Preload("Brand").First(&product, product.ID)
+	// Reload with relationships AND calculated stock
+	database.DB.Preload("Category").Preload("Brand").
+		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		First(&product, product.ID)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Product updated", "product": product})
 }
 

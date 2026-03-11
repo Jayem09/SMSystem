@@ -149,8 +149,8 @@ export default function POS() {
 
   const handleCheckout = async (status: 'pending' | 'completed' = 'completed') => {
     if (cart.length === 0) return;
-    if (receiptType === 'SI' && (!tin.trim() || !businessAddress.trim())) {
-      alert('TIN and Business Address are required for a Sales Invoice (SI).');
+    if (receiptType === 'SI' && !businessAddress.trim()) {
+      alert('Business Address is required for a Sales Invoice (SI).');
       return;
     }
     try {
@@ -293,42 +293,66 @@ export default function POS() {
               <p>No products match your search.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredProducts.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  disabled={!p.is_service && p.stock <= 0}
-                  className={`flex flex-col text-left bg-white rounded-2xl border transition-all active:scale-95 group relative overflow-hidden ${
-                    (!p.is_service && p.stock <= 0) 
-                    ? 'opacity-60 cursor-not-allowed border-gray-200' 
-                    : 'border-gray-100 hover:border-gray-900 shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  <div className="p-4 flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{p.category?.name}</span>
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              {/* Table Header */}
+              <div className="grid grid-cols-[2fr_1fr_auto_auto] gap-0 border-b border-gray-100 bg-gray-50">
+                <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</div>
+                <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</div>
+                <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Stock</div>
+                <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest"></div>
+              </div>
+              {/* Table Rows */}
+              {filteredProducts.map((p, idx) => {
+                const outOfStock = !p.is_service && p.stock <= 0;
+                return (
+                  <div
+                    key={p.id}
+                    className={`grid grid-cols-[2fr_1fr_auto_auto] gap-0 items-center border-b border-gray-50 transition-colors ${
+                      outOfStock ? 'opacity-50' : 'hover:bg-indigo-50/40 cursor-pointer'
+                    } ${idx % 2 === 0 ? '' : 'bg-gray-50/50'}`}
+                    onClick={() => !outOfStock && addToCart(p)}
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {p.is_service && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 uppercase tracking-widest shrink-0">SVC</span>
+                        )}
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 leading-tight">{p.name}</div>
+                          <div className="text-[10px] text-gray-400 font-medium">{p.category?.name}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="px-4 py-3">
+                      <span className="text-sm font-black text-indigo-600">₱{p.price.toLocaleString()}</span>
+                    </div>
+                    <div className="px-4 py-3">
                       {p.is_service ? (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">
-                          SERVICE
-                        </span>
+                        <span className="text-[10px] font-bold text-gray-400">N/A</span>
+                      ) : outOfStock ? (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-red-100 text-red-600">OUT</span>
                       ) : (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.stock <= 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                          STK: {p.stock}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${p.stock <= 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                          {p.stock}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-sm font-bold text-gray-900 leading-tight mb-1 line-clamp-2">{p.name}</h3>
-                    <p className="text-lg font-black text-indigo-600">₱{p.price.toLocaleString()}</p>
-                  </div>
-                  {!p.is_service && p.stock <= 0 && (
-                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center">
-                      <span className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-xl">OUT OF STOCK</span>
+                    <div className="px-3 py-3">
+                      <button
+                        disabled={outOfStock}
+                        onClick={(e) => { e.stopPropagation(); if (!outOfStock) addToCart(p); }}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${
+                          outOfStock
+                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                            : 'bg-gray-900 text-white hover:bg-indigo-600 active:scale-95 shadow-sm'
+                        }`}
+                      >
+                        +
+                      </button>
                     </div>
-                  )}
-                  <div className="h-1 w-full bg-gray-50 group-hover:bg-gray-900 transition-colors" />
-                </button>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </main>
@@ -422,7 +446,7 @@ export default function POS() {
       </div>
 
       {/* Checkout Modal */}
-      <Modal open={checkoutModalOpen} onClose={() => setCheckoutModalOpen(false)} title="Finalize Sale" maxWidth="max-w-3xl">
+      <Modal open={checkoutModalOpen} onClose={() => setCheckoutModalOpen(false)} title="Finalize Sale" maxWidth="max-w-4xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-2">
           {/* Left Column: Customer & Service Info */}
           <div className="space-y-5">
@@ -487,7 +511,7 @@ export default function POS() {
 
                 {receiptType === 'SI' && (
                   <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95 duration-200 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                    <FormField label="Tax Identification (TIN)" value={tin} onChange={setTin} required placeholder="000-000-000" />
+                    <FormField label="Tax Identification (TIN) — Optional" value={tin} onChange={setTin} placeholder="000-000-000" />
                     <FormField label="Withholding (%)" type="number" value={withholdingTaxRate} onChange={setWithholdingTaxRate} placeholder="0" />
                     <div className="col-span-2">
                       <FormField label="Business Address" value={businessAddress} onChange={setBusinessAddress} required placeholder="Full registered address" />

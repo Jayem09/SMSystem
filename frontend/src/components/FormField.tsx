@@ -9,6 +9,7 @@ interface FormFieldProps {
   min?: number;
   step?: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export default function FormField({
@@ -22,6 +23,7 @@ export default function FormField({
   min,
   step,
   icon,
+  disabled,
 }: FormFieldProps) {
   const baseClass = 'w-full px-4 py-3 border border-gray-100 rounded-2xl text-sm text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-900 transition-all bg-gray-50/50 hover:bg-white placeholder:text-gray-400';
   const paddingLeft = icon ? 'pl-11' : 'px-4';
@@ -41,15 +43,17 @@ export default function FormField({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             required={required}
+            disabled={disabled}
             rows={3}
-            className={`${baseClass} ${paddingLeft} resize-none`}
+            className={`${baseClass} ${paddingLeft} resize-none ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
           />
         ) : type === 'select' ? (
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
             required={required}
-            className={`${baseClass} ${paddingLeft} appearance-none`}
+            disabled={disabled}
+            className={`${baseClass} ${paddingLeft} appearance-none ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
           >
             <option value="">{placeholder || `Select ${label}`}</option>
             {options?.map((opt) => (
@@ -65,7 +69,8 @@ export default function FormField({
             required={required}
             min={min}
             step={step}
-            className={`${baseClass} ${paddingLeft}`}
+            disabled={disabled}
+            className={`${baseClass} ${paddingLeft} ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
           />
         )}
       </div>
