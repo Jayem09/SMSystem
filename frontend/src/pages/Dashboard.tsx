@@ -14,6 +14,9 @@ export default function Dashboard() {
     total_sales: 0,
     total_expenses: 0,  
     net_profit: 0,
+    sales_change: '0%',
+    expenses_change: '0%',
+    profit_change: '0%',
     product_count: 0,
     order_count: 0,
     customer_count: 0,
@@ -208,25 +211,31 @@ export default function Dashboard() {
       {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {[
-          { label: 'Total Sales', value: stats.total_sales, color: 'blue', icon:PhilippinePeso, trend: '+12%' },
-          { label: 'Total Expenses', value: stats.total_expenses, color: 'rose', icon: ShoppingCart, trend: '-5%' },
-          { label: 'Net Profit', value: stats.net_profit, color: 'emerald', icon: TrendingUp, trend: '+18%' },
-        ].map((card, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-2xl bg-${card.color}-50 text-${card.color}-600 group-hover:scale-110 transition-transform duration-300`}>
-                <card.icon className="w-6 h-6" />
+          { label: 'Total Sales', value: stats.total_sales, color: 'blue', icon: PhilippinePeso, trend: stats.sales_change },
+          { label: 'Total Expenses', value: stats.total_expenses, color: 'rose', icon: ShoppingCart, trend: stats.expenses_change },
+          { label: 'Net Profit', value: stats.net_profit, color: 'emerald', icon: TrendingUp, trend: stats.profit_change },
+        ].map((card, i) => {
+          const isNegative = card.trend.startsWith('-');
+          const isPositive = card.trend.startsWith('+');
+          const trendColor = isNegative ? 'rose' : (isPositive ? 'emerald' : 'gray');
+          
+          return (
+            <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-2xl bg-${card.color}-50 text-${card.color}-600 group-hover:scale-110 transition-transform duration-300`}>
+                  <card.icon className="w-6 h-6" />
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full bg-${trendColor}-50 text-${trendColor}-600`}>
+                  {card.trend}
+                </span>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600`}>
-                {card.trend}
-              </span>
+              <p className="text-sm font-medium text-gray-500 mb-1">{card.label}</p>
+              <h3 className="text-3xl font-bold text-gray-900 truncate">
+                {formatCurrency(card.value)}
+              </h3>
             </div>
-            <p className="text-sm font-medium text-gray-500 mb-1">{card.label}</p>
-            <h3 className="text-3xl font-bold text-gray-900 truncate">
-              {formatCurrency(card.value)}
-            </h3>
-          </div>
-        ))}
+          );
+        })}
       </div>
       )}
 

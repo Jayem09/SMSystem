@@ -301,6 +301,42 @@ func (h *InventoryHandler) StockOut(c *gin.Context) {
 	}
 
 	if remainingToDeduct > 0 {
+		// SELF-HEALING: If batches are insufficient, check legacy stock
+		var product models.Product
+		if err := tx.First(&product, input.ProductID).Error; err == nil {
+			if product.Stock >= remainingToDeduct {
+				// Create legacy batch to satisfy the rest
+				legacyBatch := models.Batch{
+					ProductID:   product.ID,
+					WarehouseID: input.WarehouseID,
+					BranchID:    branchID, // or warehouse branch id
+					BatchNumber: "LEGACY-SYNC",
+					Quantity:    product.Stock - remainingToDeduct,
+				}
+				// Get actual branch ID from warehouse
+				var wh models.Warehouse
+				database.DB.First(&wh, input.WarehouseID)
+				legacyBatch.BranchID = wh.BranchID
+
+				tx.Create(&legacyBatch)
+
+				movement := models.StockMovement{
+					ProductID:   product.ID,
+					BatchID:     &legacyBatch.ID,
+					WarehouseID: input.WarehouseID,
+					BranchID:    legacyBatch.BranchID,
+					UserID:      &userID,
+					Type:        models.MovementTypeOut,
+					Quantity:    -remainingToDeduct,
+					Reference:   input.Reference + " (Legacy Sync)",
+				}
+				tx.Create(&movement)
+				remainingToDeduct = 0
+			}
+		}
+	}
+
+	if remainingToDeduct > 0 {
 		tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Insufficient stock available in this warehouse to fullfill the out request."})
 		return
@@ -390,14 +426,14 @@ func (h *InventoryHandler) AdjustStock(c *gin.Context) {
 
 	// Update the global Product stock cache
 	if difference > 0 {
-		if err := tx.Model(&models.Product{}).Where("id = ? AND branch_id = ?", batch.ProductID, branchID).UpdateColumn("stock", gorm.Expr("stock + ?", difference)).Error; err != nil {
+		if err := tx.Model(&models.Product{}).Where("id = ?", batch.ProductID).UpdateColumn("stock", gorm.Expr("stock + ?", difference)).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update total product stock"})
 			return
 		}
 	} else {
 		// difference is negative, so adding it actually subtracts
-		if err := tx.Model(&models.Product{}).Where("id = ? AND branch_id = ?", batch.ProductID, branchID).UpdateColumn("stock", gorm.Expr("stock - ?", -difference)).Error; err != nil {
+		if err := tx.Model(&models.Product{}).Where("id = ?", batch.ProductID).UpdateColumn("stock", gorm.Expr("stock - ?", -difference)).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update total product stock"})
 			return

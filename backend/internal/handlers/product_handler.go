@@ -94,12 +94,11 @@ func (h *ProductHandler) List(c *gin.Context) {
 		branchID = branchIDValue.(uint)
 	}
 
-	// Use a subquery to calculate stock. 
-	// If branchID is 0 (super admin), show global stock across all branches.
-	stockSubquery := "(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id"
+	// Use a robust subquery for stock: prioritize batches sum, fallback to products.stock if no batches exist.
+	stockSubquery := "(SELECT CASE WHEN COUNT(batches.id) > 0 THEN SUM(batches.quantity) ELSE products.stock END FROM batches WHERE batches.product_id = products.id"
 	var queryArgs []interface{}
 	if branchID != 0 {
-		stockSubquery += " AND branch_id = ?"
+		stockSubquery += " AND batches.branch_id = ?"
 		queryArgs = append(queryArgs, branchID)
 	}
 	stockSubquery += ") as stock"
@@ -127,10 +126,10 @@ func (h *ProductHandler) GetByID(c *gin.Context) {
 		branchID = branchIDValue.(uint)
 	}
 
-	stockSubquery := "(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id"
+	stockSubquery := "(SELECT CASE WHEN COUNT(batches.id) > 0 THEN SUM(batches.quantity) ELSE products.stock END FROM batches WHERE batches.product_id = products.id"
 	var queryArgs []interface{}
 	if branchID != 0 {
-		stockSubquery += " AND branch_id = ?"
+		stockSubquery += " AND batches.branch_id = ?"
 		queryArgs = append(queryArgs, branchID)
 	}
 	stockSubquery += ") as stock"
