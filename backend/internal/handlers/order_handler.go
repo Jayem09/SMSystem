@@ -127,63 +127,52 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	// Run everything in a transaction
 	var order models.Order
 	order.BranchID = branchID.(uint)
+	uID := userID.(uint)
+
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		var totalAmount float64
 		var orderItems []models.OrderItem
 
+		// First pass: validate and calculate
 		for _, item := range input.Items {
-			// Fetch product and lock the row
 			var product models.Product
 			if err := tx.First(&product, item.ProductID).Error; err != nil {
 				return errors.New("product ID " + strconv.Itoa(int(item.ProductID)) + " not found")
 			}
 
-			// Check stock (only if completing immediately)
 			if orderStatus == "completed" && !product.IsService {
 				if product.Stock < item.Quantity {
 					return errors.New("insufficient stock for " + product.Name + " (available: " + strconv.Itoa(product.Stock) + ")")
 				}
 			}
 
-			// Calculate subtotal
 			subtotal := product.Price * float64(item.Quantity)
 			totalAmount += subtotal
-
 			orderItems = append(orderItems, models.OrderItem{
 				ProductID: item.ProductID,
 				Quantity:  item.Quantity,
 				UnitPrice: product.Price,
 				Subtotal:  subtotal,
 			})
-
-			// Reduce stock only if completing
-			if orderStatus == "completed" && !product.IsService {
-				if err := tx.Model(&product).Update("stock", product.Stock-item.Quantity).Error; err != nil {
-					return errors.New("failed to update stock for " + product.Name)
-				}
-			}
 		}
 
-		// Apply Discount
+		// Calculate final total
 		finalTotal := totalAmount
 		if input.DiscountType == "percentage" {
 			finalTotal -= totalAmount * (input.DiscountAmount / 100)
 		} else {
 			finalTotal -= input.DiscountAmount
 		}
-
-		// Apply Tax
-		finalTax := input.TaxAmount
 		if !input.IsTaxInclusive {
-			finalTotal += finalTax
+			finalTotal += input.TaxAmount
 		}
 
-		// Create order
+		// Create the order first to get an ID
 		order = models.Order{
 			CustomerID:         input.CustomerID,
 			GuestName:          input.GuestName,
 			GuestPhone:         input.GuestPhone,
-			UserID:             userID.(uint),
+			UserID:             uID,
 			ServiceAdvisorName: input.ServiceAdvisorName,
 			TotalAmount:        finalTotal,
 			DiscountAmount:     input.DiscountAmount,
@@ -197,10 +186,100 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			TIN:                input.TIN,
 			BusinessAddress:    input.BusinessAddress,
 			WithholdingTaxRate: input.WithholdingTaxRate,
+			BranchID:           order.BranchID,
 		}
 
 		if err := tx.Create(&order).Error; err != nil {
 			return fmt.Errorf("failed to create order: %v", err)
+		}
+
+		// Second pass: Deduct stock if completed
+		if orderStatus == "completed" {
+			for _, item := range orderItems {
+				var product models.Product
+				tx.First(&product, item.ProductID)
+				if product.IsService {
+					continue
+				}
+
+				remainingToDeduct := item.Quantity
+				var batches []models.Batch
+				batchQuery := tx.Where("product_id = ? AND quantity > 0", product.ID)
+				if order.BranchID != 0 {
+					batchQuery = batchQuery.Where("branch_id = ?", order.BranchID)
+				}
+				
+				if err := batchQuery.Order("expiry_date ASC, created_at ASC").Find(&batches).Error; err != nil {
+					return fmt.Errorf("failed to find available batches for %s", product.Name)
+				}
+
+				for i := range batches {
+					if remainingToDeduct <= 0 {
+						break
+					}
+					deduct := remainingToDeduct
+					if batches[i].Quantity < deduct {
+						deduct = batches[i].Quantity
+					}
+
+					tx.Model(&batches[i]).Update("quantity", batches[i].Quantity - deduct)
+
+					movement := models.StockMovement{
+						ProductID:   product.ID,
+						BatchID:     &batches[i].ID,
+						WarehouseID: batches[i].WarehouseID,
+						BranchID:    batches[i].BranchID,
+						UserID:      &uID,
+						Type:        models.MovementTypeOut,
+						Quantity:    -deduct,
+						Reference:   fmt.Sprintf("POS Order #%d", order.ID),
+					}
+					tx.Create(&movement)
+					remainingToDeduct -= deduct
+				}
+
+				// SELF-HEALING: If we still need to deduct but have no more batches,
+				// check if the product has legacy cached stock.
+				if remainingToDeduct > 0 && product.Stock >= remainingToDeduct {
+					fmt.Printf("🔧 Self-healing: Creating legacy batch for product %d to satisfy order #%d\n", product.ID, order.ID)
+					var warehouse models.Warehouse
+					whQuery := tx.Model(&models.Warehouse{})
+					if order.BranchID != 0 {
+						whQuery = whQuery.Where("branch_id = ?", order.BranchID)
+					}
+					if err := whQuery.First(&warehouse).Error; err == nil {
+						legacyBatch := models.Batch{
+							ProductID:   product.ID,
+							WarehouseID: warehouse.ID,
+							BranchID:    warehouse.BranchID,
+							BatchNumber: "LEGACY-SYNC",
+							Quantity:    product.Stock - remainingToDeduct, // Initialize with remaining legacy stock
+						}
+						tx.Create(&legacyBatch)
+						
+						deduct := remainingToDeduct
+						movement := models.StockMovement{
+							ProductID:   product.ID,
+							BatchID:     &legacyBatch.ID,
+							WarehouseID: warehouse.ID,
+							BranchID:    warehouse.BranchID,
+							UserID:      &uID,
+							Type:        models.MovementTypeOut,
+							Quantity:    -deduct,
+							Reference:   fmt.Sprintf("POS Order #%d (Legacy Auto-sync)", order.ID),
+						}
+						tx.Create(&movement)
+						remainingToDeduct -= deduct
+					}
+				}
+
+				if remainingToDeduct > 0 {
+					return fmt.Errorf("insufficient batch stock for %s during final deduction", product.Name)
+				}
+
+				// Update cache
+				tx.Model(&product).Update("stock", product.Stock-item.Quantity)
+			}
 		}
 
 		return nil
@@ -250,6 +329,9 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 				return err
 			}
 
+			userIDValue, _ := c.Get("userID")
+			uID := userIDValue.(uint)
+
 			for _, item := range items {
 				var product models.Product
 				if err := tx.First(&product, item.ProductID).Error; err != nil {
@@ -257,12 +339,94 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 				}
 
 				if !product.IsService {
-					if product.Stock < item.Quantity {
-						return errors.New("insufficient stock for " + product.Name + " to complete this order (available: " + strconv.Itoa(product.Stock) + ")")
+					// FIFO Deduction from Batches
+					remainingToDeduct := item.Quantity
+					var batches []models.Batch
+					
+					// Deduct from batches belonging to this branch
+					batchQuery := tx.Where("product_id = ? AND quantity > 0", product.ID)
+					if order.BranchID != 0 {
+						batchQuery = batchQuery.Where("branch_id = ?", order.BranchID)
+					}
+					
+					if err := batchQuery.Order("expiry_date ASC, created_at ASC").Find(&batches).Error; err != nil {
+						return fmt.Errorf("failed to find available batches for %s", product.Name)
 					}
 
+					for i := range batches {
+						if remainingToDeduct <= 0 {
+							break
+						}
+
+						deductFromBatch := remainingToDeduct
+						if batches[i].Quantity < deductFromBatch {
+							deductFromBatch = batches[i].Quantity
+						}
+
+						// Update batch
+						if err := tx.Model(&batches[i]).Update("quantity", batches[i].Quantity - deductFromBatch).Error; err != nil {
+							return fmt.Errorf("failed to update batch for %s", product.Name)
+						}
+
+						// Record Stock Movement
+						movement := models.StockMovement{
+							ProductID:   product.ID,
+							BatchID:     &batches[i].ID,
+							WarehouseID: batches[i].WarehouseID,
+							BranchID:    batches[i].BranchID,
+							UserID:      &uID,
+							Type:        models.MovementTypeOut,
+							Quantity:    -deductFromBatch,
+							Reference:   fmt.Sprintf("POS Order #%d (Completed Pending)", order.ID),
+						}
+
+						if err := tx.Create(&movement).Error; err != nil {
+							return fmt.Errorf("failed to record movement for %s", product.Name)
+						}
+
+						remainingToDeduct -= deductFromBatch
+					}
+
+					// SELF-HEALING: Legacy sync
+					if remainingToDeduct > 0 && product.Stock >= remainingToDeduct {
+						var warehouse models.Warehouse
+						whQuery := tx.Model(&models.Warehouse{})
+						if order.BranchID != 0 {
+							whQuery = whQuery.Where("branch_id = ?", order.BranchID)
+						}
+						if err := whQuery.First(&warehouse).Error; err == nil {
+							legacyBatch := models.Batch{
+								ProductID:   product.ID,
+								WarehouseID: warehouse.ID,
+								BranchID:    warehouse.BranchID,
+								BatchNumber: "LEGACY-SYNC",
+								Quantity:    product.Stock - remainingToDeduct,
+							}
+							tx.Create(&legacyBatch)
+							
+							deduct := remainingToDeduct
+							movement := models.StockMovement{
+								ProductID:   product.ID,
+								BatchID:     &legacyBatch.ID,
+								WarehouseID: warehouse.ID,
+								BranchID:    warehouse.BranchID,
+								UserID:      &uID,
+								Type:        models.MovementTypeOut,
+								Quantity:    -deduct,
+								Reference:   fmt.Sprintf("POS Order #%d (Pending Legacy Sync)", order.ID),
+							}
+							tx.Create(&movement)
+							remainingToDeduct -= deduct
+						}
+					}
+
+					if remainingToDeduct > 0 {
+						return fmt.Errorf("insufficient batch stock for %s (need %d more)", product.Name, remainingToDeduct)
+					}
+
+					// Update product cache
 					if err := tx.Model(&product).Update("stock", product.Stock-item.Quantity).Error; err != nil {
-						return errors.New("failed to deduct stock for " + product.Name)
+						return errors.New("failed to update product stock cache for " + product.Name)
 					}
 				}
 			}

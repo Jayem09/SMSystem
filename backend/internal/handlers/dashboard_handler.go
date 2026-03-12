@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
@@ -33,55 +34,140 @@ type Product_Performance struct {
 }
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
-	branchID, _ := c.Get("branchID")
+	branchIDValue, _ := c.Get("branchID")
+	var branchID uint
+	if branchIDValue != nil {
+		branchID = branchIDValue.(uint)
+	}
+
 	var totalSales float64
 	var totalExpenses float64
 	var productCount int64
 	var orderCount int64
 	var customerCount int64
 
-	database.DB.Model(&models.Order{}).Where("branch_id = ?", branchID).Select("SUM(total_amount)").Scan(&totalSales)
-	database.DB.Model(&models.Expense{}).Where("branch_id = ?", branchID).Select("SUM(amount)").Scan(&totalExpenses)
-	database.DB.Model(&models.Product{}).Count(&productCount) // Products remain global
-	database.DB.Model(&models.Order{}).Where("branch_id = ?", branchID).Count(&orderCount)
-	database.DB.Model(&models.Customer{}).Count(&customerCount) // Customers remain global for now
+	// Base queries
+	ordersQuery := database.DB.Model(&models.Order{})
+	expensesQuery := database.DB.Model(&models.Expense{})
+	if branchID != 0 {
+		ordersQuery = ordersQuery.Where("branch_id = ?", branchID)
+		expensesQuery = expensesQuery.Where("branch_id = ?", branchID)
+	}
+
+	ordersQuery.Select("SUM(total_amount)").Scan(&totalSales)
+	expensesQuery.Select("SUM(amount)").Scan(&totalExpenses)
+	database.DB.Model(&models.Product{}).Count(&productCount)
+	ordersQuery.Count(&orderCount)
+	database.DB.Model(&models.Customer{}).Count(&customerCount)
 
 	var salesTrend []DailySale
-	database.DB.Model(&models.Order{}).
-		Select("DATE(created_at) as date, SUM(total_amount) as amount").
-		Where("branch_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)", branchID).
+	ordersQuery.Select("DATE(created_at) as date, SUM(total_amount) as amount").
+		Where("created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)").
 		Group("DATE(created_at)").
 		Order("date ASC").
 		Scan(&salesTrend)
 
 	var lowStockProducts []models.Product
-	database.DB.Where("stock <= ?", 5).Limit(5).Find(&lowStockProducts)
+	stockSubquery := "(SELECT CASE WHEN COUNT(batches.id) > 0 THEN SUM(batches.quantity) ELSE products.stock END FROM batches WHERE batches.product_id = products.id"
+	var queryArgs []interface{}
+	if branchID != 0 {
+		stockSubquery += " AND batches.branch_id = ?"
+		queryArgs = append(queryArgs, branchID)
+	}
+	stockSubquery += ") as stock"
+
+	whereArgs := append([]interface{}{}, queryArgs...)
+	whereArgs = append(whereArgs, 5)
+
+	database.DB.Select("products.*, "+stockSubquery, queryArgs...).
+		Where(stockSubquery+" <= ?", whereArgs...).
+		Limit(5).Find(&lowStockProducts)
 
 	var topAdvisors []SA_Performance
-	database.DB.Model(&models.Order{}).
-		Select("service_advisor_name as advisor_name, SUM(total_amount) as total_sales, COUNT(id) as order_count").
-		Where("branch_id = ? AND DATE(created_at) = CURDATE() AND service_advisor_name != ''", branchID).
+	ordersQuery.Select("service_advisor_name as advisor_name, SUM(total_amount) as total_sales, COUNT(id) as order_count").
+		Where("DATE(created_at) = CURDATE() AND service_advisor_name != ''").
 		Group("service_advisor_name").
 		Order("total_sales DESC").
 		Limit(5).
 		Scan(&topAdvisors)
 
 	var topProducts []Product_Performance
-	database.DB.Table("order_items").
+	topProductsQuery := database.DB.Table("order_items").
 		Select("products.name as product_name, categories.name as category_name, SUM(order_items.quantity) as total_qty, SUM(order_items.subtotal) as total_sales").
 		Joins("JOIN orders ON orders.id = order_items.order_id").
 		Joins("JOIN products ON products.id = order_items.product_id").
 		Joins("LEFT JOIN categories ON categories.id = products.category_id").
-		Where("orders.branch_id = ? AND DATE(orders.created_at) = CURDATE()", branchID).
-		Group("products.id").
+		Where("DATE(orders.created_at) = CURDATE()")
+	
+	if branchID != 0 {
+		topProductsQuery = topProductsQuery.Where("orders.branch_id = ?", branchID)
+	}
+
+	topProductsQuery.Group("products.id").
 		Order("total_qty DESC").
 		Limit(5).
 		Scan(&topProducts)
+
+	// Calculate current month and previous month stats for growth percentages
+	var currentSales, prevSales float64
+	var currentExpenses, prevExpenses float64
+
+	// Current Month: 1st of DM to NOW
+	cmStart := "DATE_FORMAT(NOW() ,'%Y-%m-01')"
+	// Previous Month: 1st of PM to end of PM
+	pmStart := "DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')"
+	pmEnd := "LAST_DAY(DATE_SUB(NOW(), INTERVAL 1 MONTH))"
+
+	ordersQuery.Where("created_at >= " + cmStart).Select("SUM(total_amount)").Scan(&currentSales)
+	database.DB.Model(&models.Order{}).
+		Where(func() string {
+			if branchID != 0 {
+				return "branch_id = ?"
+			}
+			return "1=1"
+		}(), branchID).
+		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd).
+		Select("SUM(total_amount)").Scan(&prevSales)
+
+	expensesQuery.Where("created_at >= " + cmStart).Select("SUM(amount)").Scan(&currentExpenses)
+	database.DB.Model(&models.Expense{}).
+		Where(func() string {
+			if branchID != 0 {
+				return "branch_id = ?"
+			}
+			return "1=1"
+		}(), branchID).
+		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd).
+		Select("SUM(amount)").Scan(&prevExpenses)
+
+	calculateChange := func(current, prev float64) string {
+		if prev == 0 {
+			if current > 0 {
+				return "+100%"
+			}
+			return "0%"
+		}
+		change := ((current - prev) / prev) * 100
+		if change >= 0 {
+			return fmt.Sprintf("+%.1f%%", change)
+		}
+		return fmt.Sprintf("%.1f%%", change)
+	}
+
+	salesChange := calculateChange(currentSales, prevSales)
+	expensesChange := calculateChange(currentExpenses, prevExpenses)
+	
+	currentProfit := currentSales - currentExpenses
+	prevProfit := prevSales - prevExpenses
+	profitChange := calculateChange(currentProfit, prevProfit)
 
 	c.JSON(http.StatusOK, gin.H{
 		"total_sales":        totalSales,
 		"total_expenses":     totalExpenses,
 		"net_profit":         totalSales - totalExpenses,
+		"sales_change":       salesChange,
+		"expenses_change":    expensesChange,
+		"profit_change":      profitChange,
 		"product_count":      productCount,
 		"order_count":        orderCount,
 		"customer_count":     customerCount,
