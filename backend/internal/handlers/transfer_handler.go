@@ -1,0 +1,466 @@
+package handlers
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"smsystem-backend/internal/database"
+	"smsystem-backend/internal/models"
+	"smsystem-backend/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type TransferHandler struct {
+	LogService *services.LogService
+}
+
+func NewTransferHandler(logSvc *services.LogService) *TransferHandler {
+	return &TransferHandler{LogService: logSvc}
+}
+
+type transferItemInput struct {
+	ProductID uint `json:"product_id" binding:"required"`
+	Quantity  int  `json:"quantity" binding:"required,min=1"`
+}
+
+type createTransferInput struct {
+	SourceBranchID      uint                `json:"source_branch_id" binding:"required"`
+	DestinationBranchID uint                `json:"destination_branch_id" binding:"required"`
+	Notes               string              `json:"notes"`
+	Items               []transferItemInput `json:"items" binding:"required,min=1,dive"`
+}
+
+type updateTransferStatusInput struct {
+	Status string `json:"status" binding:"required,oneof=approved in_transit completed rejected cancelled"`
+}
+
+// List fetches transfers relevant to the user's branch (or all if super admin)
+func (h *TransferHandler) List(c *gin.Context) {
+	userRole, _ := c.Get("userRole")
+	branchIDValue, _ := c.Get("branchID")
+	selectedBranchStr := c.Query("branch_id")
+	
+	userRoleStr := ""
+	if r, ok := userRole.(string); ok {
+		userRoleStr = strings.ToLower(r)
+	}
+
+	var branchID uint
+	if branchIDValue != nil {
+		switch v := branchIDValue.(type) {
+		case uint:
+			branchID = v
+		case float64:
+			branchID = uint(v)
+		case string:
+			vid, _ := strconv.ParseUint(v, 10, 64)
+			branchID = uint(vid)
+		}
+	}
+
+	// Build the base query manually to avoid session pollution
+	query := database.DB.Model(&models.StockTransfer{}).
+		Preload("SourceBranch").Preload("DestinationBranch").
+		Preload("RequestedByUser").Preload("Items.Product")
+
+	var effectiveQuery *gorm.DB
+	if userRoleStr == "super_admin" {
+		if selectedBranchStr != "" && selectedBranchStr != "ALL" {
+			bID, _ := strconv.ParseUint(selectedBranchStr, 10, 64)
+			effectiveQuery = query.Where("source_branch_id = ? OR destination_branch_id = ?", uint(bID), uint(bID))
+		} else {
+			effectiveQuery = query
+		}
+	} else if branchID > 0 {
+		effectiveQuery = query.Where("source_branch_id = ? OR destination_branch_id = ?", branchID, branchID)
+	} else {
+		effectiveQuery = query // Permissive fallback for debug
+	}
+
+	// Capture SQL for tracer
+	sqlStr := database.DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Model(&models.StockTransfer{}).Where("source_branch_id = ? OR destination_branch_id = ?", branchID, branchID).Find(&[]models.StockTransfer{})
+	})
+
+	var transfers []models.StockTransfer
+	if err := effectiveQuery.Order("created_at DESC").Find(&transfers).Error; err != nil {
+		log.Printf("TRANSFER LIST ERROR: Role=%s, BranchID=%v, Error=%v", userRoleStr, branchIDValue, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stock transfers"})
+		return
+	}
+
+	log.Printf("TRANSFER LIST SUCCESS: User=%s, BranchID=%v, Found=%d, SQL=%s", userRoleStr, branchID, len(transfers), sqlStr)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"transfers": transfers,
+		"debug": gin.H{
+			"role": userRoleStr,
+			"branch_id": branchID,
+			"found": len(transfers),
+			"sql": sqlStr,
+		},
+	})
+}
+
+// GetPendingCounts returns the number of actionable transfers for a branch
+func (h *TransferHandler) GetPendingCounts(c *gin.Context) {
+	branchIDValue, _ := c.Get("branchID")
+	userRole, _ := c.Get("userRole")
+	
+	var incomingCount int64
+	var receivingCount int64
+	
+	userRoleStr := ""
+	if r, ok := userRole.(string); ok {
+		userRoleStr = strings.ToLower(r)
+	}
+	
+	var branchID uint
+	if branchIDValue != nil {
+		switch v := branchIDValue.(type) {
+		case uint: branchID = v
+		case float64: branchID = uint(v)
+		case string:
+			u64, _ := strconv.ParseUint(v, 10, 64)
+			branchID = uint(u64)
+		}
+	}
+
+	if userRoleStr == "super_admin" {
+		// Branch needs to fulfill/approve/ship (source branch is me)
+		database.DB.Model(&models.StockTransfer{}).Where("source_branch_id = ? AND status IN ?", branchID, []string{models.TransferStatusPending, models.TransferStatusApproved}).Count(&incomingCount)
+		// Branch needs to receive (destination branch is me, and stock is in transit)
+		database.DB.Model(&models.StockTransfer{}).Where("destination_branch_id = ? AND status = ?", branchID, models.TransferStatusInTransit).Count(&receivingCount)
+	}
+
+	log.Printf("PENDING COUNTS DEBUG: BranchID=%v, Role=%v, RoleStr=%s, Incoming=%d, Receiving=%d", branchIDValue, userRole, userRoleStr, incomingCount, receivingCount)
+
+	c.JSON(http.StatusOK, gin.H{
+		"incoming_pending": int(incomingCount),
+		"incoming_shipped": int(receivingCount),
+		"total_actionable": int(incomingCount + receivingCount),
+	})
+}
+
+// Create makes a new stock transfer request from the destination branch asking the source branch
+func (h *TransferHandler) Create(c *gin.Context) {
+	var input createTransferInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed", "details": err.Error()})
+		return
+	}
+
+	if input.SourceBranchID == input.DestinationBranchID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Source and destination branch cannot be the same"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	branchIDValue, _ := c.Get("branchID")
+
+	var userID uint
+	if userIDValue != nil {
+		switch v := userIDValue.(type) {
+		case uint: userID = v
+		case float64: userID = uint(v)
+		case string:
+			u64, _ := strconv.ParseUint(v, 10, 64)
+			userID = uint(u64)
+		}
+	}
+
+	var branchID uint
+	if branchIDValue != nil {
+		switch v := branchIDValue.(type) {
+		case uint: branchID = v
+		case float64: branchID = uint(v)
+		case string:
+			u64, _ := strconv.ParseUint(v, 10, 64)
+			branchID = uint(u64)
+		}
+	}
+
+	log.Printf("TRANSFER CREATE: UserID=%v, UserBranchID=%v, TargetSource=%v, TargetDest=%v", userID, branchID, input.SourceBranchID, input.DestinationBranchID)
+
+	var transfer models.StockTransfer
+
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// Generate reference number
+		refNumber := fmt.Sprintf("TRF-%d", time.Now().Unix())
+
+		transfer = models.StockTransfer{
+			ReferenceNumber:     refNumber,
+			SourceBranchID:      input.SourceBranchID,
+			DestinationBranchID: input.DestinationBranchID,
+			RequestedByUserID:   userID,
+			Status:              models.TransferStatusPending,
+			Notes:               input.Notes,
+		}
+
+		if err := tx.Create(&transfer).Error; err != nil {
+			return err
+		}
+
+		for _, item := range input.Items {
+			tItem := models.StockTransferItem{
+				StockTransferID: transfer.ID,
+				ProductID:       item.ProductID,
+				Quantity:        item.Quantity,
+			}
+			if err := tx.Create(&tItem).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create transfer request"})
+		return
+	}
+
+	h.LogService.Record(userID, "CREATE", "StockTransfer", strconv.Itoa(int(transfer.ID)), fmt.Sprintf("Created stock transfer %s", transfer.ReferenceNumber), c.ClientIP())
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Transfer request created", "transfer": transfer})
+}
+
+// UpdateStatus progresses a transfer and moves inventory if necessary
+func (h *TransferHandler) UpdateStatus(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid transfer ID"})
+		return
+	}
+
+	var input updateTransferStatusInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed"})
+		return
+	}
+
+	var transfer models.StockTransfer
+	if err := database.DB.Preload("Items").First(&transfer, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transfer not found"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	branchIDValue, _ := c.Get("branchID")
+	userRoleValue, _ := c.Get("userRole")
+
+	var userID uint
+	if userIDValue != nil {
+		switch v := userIDValue.(type) {
+		case uint: userID = v
+		case float64: userID = uint(v)
+		case string:
+			u64, _ := strconv.ParseUint(v, 10, 64)
+			userID = uint(u64)
+		}
+	}
+
+	var userBranchID uint
+	if branchIDValue != nil {
+		switch v := branchIDValue.(type) {
+		case uint: userBranchID = v
+		case float64: userBranchID = uint(v)
+		case string:
+			u64, _ := strconv.ParseUint(v, 10, 64)
+			userBranchID = uint(u64)
+		}
+	}
+
+	userRole := ""
+	if r, ok := userRoleValue.(string); ok {
+		userRole = strings.ToLower(r)
+	}
+
+	oldStatus := transfer.Status
+	newStatus := input.Status
+
+	if oldStatus == newStatus {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Status is already " + newStatus})
+		return
+	}
+
+	// Permission checks
+	if userRole != "super_admin" {
+		if newStatus == models.TransferStatusApproved || newStatus == models.TransferStatusInTransit || newStatus == models.TransferStatusRejected {
+			if userBranchID != transfer.SourceBranchID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Only the source branch can approve/ship/reject transfers"})
+				return
+			}
+		}
+		if newStatus == models.TransferStatusCompleted {
+			if userBranchID != transfer.DestinationBranchID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Only the destination branch can receive transfers"})
+				return
+			}
+		}
+	}
+
+	// Transaction for status update and inventory movements
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		transfer.Status = newStatus
+
+		switch newStatus {
+		case models.TransferStatusApproved:
+			transfer.ApprovedByUserID = &userID
+		case models.TransferStatusCompleted:
+			transfer.ReceivedByUserID = &userID
+		}
+
+		if err := tx.Save(&transfer).Error; err != nil {
+			return err
+		}
+
+		// State Machine for stock movements
+		if oldStatus == models.TransferStatusApproved && newStatus == models.TransferStatusInTransit {
+			// Deduct from Source Branch
+			for _, item := range transfer.Items {
+				var product models.Product
+				if err := tx.First(&product, item.ProductID).Error; err != nil {
+					return errors.New("Product not found")
+				}
+				
+				// Optional: In a highly robust system we'd deduct FIFO batches. 
+				var sourceBatches []models.Batch
+				remaining := item.Quantity
+				log.Printf("STOCK DEDUCTION: ProductID=%d, SourceBranchID=%d, RemainingNeeded=%d", product.ID, transfer.SourceBranchID, remaining)
+				
+				if err := tx.Where("product_id = ? AND branch_id = ? AND quantity > 0", product.ID, transfer.SourceBranchID).Order("expiry_date ASC").Find(&sourceBatches).Error; err != nil {
+					return err
+				}
+				log.Printf("STOCK DEDUCTION: Found %d batches for ProductID=%d at BranchID=%d", len(sourceBatches), product.ID, transfer.SourceBranchID)
+				
+				// --- SELF-HEALING: If no batches exist but we have stock in cache ---
+				if len(sourceBatches) == 0 && product.Stock >= remaining {
+					log.Printf("STOCK SELF-HEALING: Creating migration batch for ProductID=%d at BranchID=%d", product.ID, transfer.SourceBranchID)
+					var sourceWarehouse models.Warehouse
+					if err := tx.Where("branch_id = ?", transfer.SourceBranchID).First(&sourceWarehouse).Error; err != nil {
+						// Create a default warehouse if none exists
+						sourceWarehouse = models.Warehouse{
+							Name: "Default Warehouse",
+							BranchID: transfer.SourceBranchID,
+						}
+						tx.Create(&sourceWarehouse)
+					}
+					
+					migrationBatch := models.Batch{
+						ProductID:   product.ID,
+						WarehouseID: sourceWarehouse.ID,
+						BranchID:    transfer.SourceBranchID,
+						BatchNumber: "LEGACY-MIGRATION",
+						Quantity:    product.Stock,
+					}
+					if err := tx.Create(&migrationBatch).Error; err == nil {
+						sourceBatches = append(sourceBatches, migrationBatch)
+					}
+				}
+				// ---------------------------------------------------------------------
+
+				for _, b := range sourceBatches {
+					log.Printf("  - Batch ID: %d, Qty: %d", b.ID, b.Quantity)
+				}
+
+				for i := range sourceBatches {
+					if remaining <= 0 {
+						break
+					}
+					deduct := remaining
+					if sourceBatches[i].Quantity < deduct {
+						deduct = sourceBatches[i].Quantity
+					}
+					
+					tx.Model(&sourceBatches[i]).Update("quantity", sourceBatches[i].Quantity-deduct)
+					
+					// Record Movement Out
+					movement := models.StockMovement{
+						ProductID:   product.ID,
+						BatchID:     &sourceBatches[i].ID,
+						WarehouseID: sourceBatches[i].WarehouseID,
+						BranchID:    transfer.SourceBranchID,
+						UserID:      &userID,
+						Type:        models.MovementTypeOut,
+						Quantity:    -deduct,
+						Reference:   fmt.Sprintf("Sent Transfer %s", transfer.ReferenceNumber),
+					}
+					tx.Create(&movement)
+					remaining -= deduct
+				}
+				if remaining > 0 {
+					return fmt.Errorf("Insufficient stock at source branch for product ID %d (Need %d more)", product.ID, remaining)
+				}
+
+				// Update global product stock cache (Decrement from Source)
+				if err := tx.Model(&product).Update("stock", product.Stock-item.Quantity).Error; err != nil {
+					return err
+				}
+			}
+		} else if oldStatus == models.TransferStatusInTransit && newStatus == models.TransferStatusCompleted {
+			// Add to Destination Branch
+			for _, item := range transfer.Items {
+				// We need a destination warehouse
+				var destWarehouse models.Warehouse
+				if err := tx.Where("branch_id = ?", transfer.DestinationBranchID).First(&destWarehouse).Error; err != nil {
+					// --- SELF-HEALING: Create warehouse for destination if missing ---
+					destWarehouse = models.Warehouse{
+						Name:     "Default Warehouse",
+						BranchID: transfer.DestinationBranchID,
+					}
+					tx.Create(&destWarehouse)
+				}
+
+				// Create a new batch for the received items
+				batch := models.Batch{
+					ProductID:   item.ProductID,
+					WarehouseID: destWarehouse.ID,
+					BranchID:    transfer.DestinationBranchID,
+					BatchNumber: fmt.Sprintf("TRF-%d", transfer.ID),
+					Quantity:    item.Quantity,
+				}
+				if err := tx.Create(&batch).Error; err != nil {
+					return err
+				}
+
+				// Update global product stock cache (Increment at Destination)
+				var product models.Product
+				if err := tx.First(&product, item.ProductID).Error; err == nil {
+					tx.Model(&product).Update("stock", product.Stock+item.Quantity)
+				}
+
+				// Record Movement In
+				movement := models.StockMovement{
+					ProductID:   item.ProductID,
+					BatchID:     &batch.ID,
+					WarehouseID: destWarehouse.ID,
+					BranchID:    transfer.DestinationBranchID,
+					UserID:      &userID,
+					Type:        models.MovementTypeIn,
+					Quantity:    item.Quantity,
+					Reference:   fmt.Sprintf("Received Transfer %s", transfer.ReferenceNumber),
+				}
+				tx.Create(&movement)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to update transfer status", "details": err.Error()})
+		return
+	}
+
+	h.LogService.Record(userID, "UPDATE", "StockTransfer", strconv.Itoa(int(transfer.ID)), fmt.Sprintf("Status changed to %s", newStatus), c.ClientIP())
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transfer status updated", "transfer": transfer})
+}

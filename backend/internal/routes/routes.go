@@ -31,6 +31,7 @@ type Handlers struct {
 	Settings      *handlers.SettingsHandler
 	Report        *handlers.ReportHandler
 	Branch        *handlers.BranchHandler
+	Transfer      *handlers.TransferHandler
 }
 
 // Setup configures all API routes.
@@ -107,6 +108,19 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			inventory.GET("/levels", h.Inventory.GetStockLevels)
 			inventory.GET("/logs", h.Inventory.GetMovementLogs)
 			// Modifications require admin
+		}
+
+		// ─── Branches (Listing for transfers) ───
+		protected.GET("/branches", h.Branch.List)
+
+		// ─── Transfers ───
+		transfers := protected.Group("/transfers")
+		{
+			transfers.GET("", h.Transfer.List)
+			transfers.GET("/pending-counts", h.Transfer.GetPendingCounts)
+			transfers.POST("", h.Transfer.Create)
+			// Only allow updating status (approving, shipping, receiving)
+			transfers.PUT("/:id/status", h.Transfer.UpdateStatus)
 		}
 
 		// ─── Admin/SuperAdmin shared routes ───
@@ -204,10 +218,10 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			superAdmin := admin.Group("")
 			superAdmin.Use(middleware.RequireRole("super_admin"))
 			{
-				// ─── Branches ───
+				// ─── Branches (Management) ───
 				branches := superAdmin.Group("/branches")
 				{
-					branches.GET("", h.Branch.List)
+					// List is already available to all authenticated users/admins above
 					branches.POST("", h.Branch.Create)
 					branches.PUT("/:id", h.Branch.Update)
 				}

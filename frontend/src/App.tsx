@@ -23,6 +23,7 @@ import Inventory from './pages/Inventory';
 import SettingsPage from './pages/Settings';
 import DailyReport from './pages/DailyReport';
 import Branches from './pages/Branches';
+import Transfers from './pages/Transfers';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
             <Route path="/logs" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
             <Route path="/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>} />
+            <Route path="/transfers" element={<ProtectedRoute requiredRole="admin"><Transfers /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
           </Route>
 

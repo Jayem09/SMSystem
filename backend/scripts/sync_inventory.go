@@ -26,7 +26,7 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	fmt.Println("🚀 Starting Inventory Re-sync and Legacy Migration...")
+	fmt.Println("Starting Inventory Re-sync and Legacy Migration...")
 
 	var products []models.Product
 	if err := db.Find(&products).Error; err != nil {
@@ -36,10 +36,10 @@ func main() {
 	// Ensure we have at least one warehouse to put legacy stock into
 	var mainWarehouse models.Warehouse
 	if err := db.First(&mainWarehouse).Error; err != nil {
-		fmt.Println("⚠️ No warehouse found in database. Please create a warehouse first.")
+		fmt.Println("No warehouse found in database. Please create a warehouse first.")
 		return
 	}
-	fmt.Printf("📦 Using Warehouse: %s (ID: %d, BranchID: %d) for legacy stock.\n", mainWarehouse.Name, mainWarehouse.ID, mainWarehouse.BranchID)
+	fmt.Printf("Using Warehouse: %s (ID: %d, BranchID: %d) for legacy stock.\n", mainWarehouse.Name, mainWarehouse.ID, mainWarehouse.BranchID)
 
 	for _, p := range products {
 		if p.IsService {
@@ -53,7 +53,7 @@ func main() {
 		// 1. Check for missing batches (Legacy Data)
 		if p.Stock > batchSum {
 			missingQty := p.Stock - batchSum
-			fmt.Printf("🔧 Product '%s' (ID: %d) has %d missing units in batches. Creating legacy batch...\n", p.Name, p.ID, missingQty)
+			fmt.Printf("Product '%s' (ID: %d) has %d missing units in batches. Creating legacy batch...\n", p.Name, p.ID, missingQty)
 			
 			legacyBatch := models.Batch{
 				ProductID:   p.ID,
@@ -63,7 +63,7 @@ func main() {
 				Quantity:    missingQty,
 			}
 			if err := db.Create(&legacyBatch).Error; err != nil {
-				fmt.Printf("❌ Failed to create legacy batch for %s: %v\n", p.Name, err)
+				fmt.Printf("Failed to create legacy batch for %s: %v\n", p.Name, err)
 				continue
 			}
 			
@@ -85,12 +85,12 @@ func main() {
 
 		// 2. Re-sync Cache
 		if p.Stock != batchSum {
-			fmt.Printf("🔄 Syncing cache for '%s' (ID: %d): %d -> %d\n", p.Name, p.ID, p.Stock, batchSum)
+			fmt.Printf("Syncing cache for '%s' (ID: %d): %d -> %d\n", p.Name, p.ID, p.Stock, batchSum)
 			if err := db.Model(&p).Update("stock", batchSum).Error; err != nil {
-				fmt.Printf("❌ Failed to update stock cache for %s: %v\n", p.Name, err)
+				fmt.Printf("Failed to update stock cache for %s: %v\n", p.Name, err)
 			}
 		}
 	}
 
-	fmt.Println("✅ Inventory Re-sync complete!")
+	fmt.Println(" Inventory Re-sync complete!")
 }

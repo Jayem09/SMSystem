@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import api from '../api/axios';
 
 const navItems = [
   { to: '/pos', label: 'POS Checkout', roles: ['super_admin', 'admin', 'cashier'] },
@@ -19,11 +21,35 @@ const navItems = [
   { to: '/logs', label: 'Activity Logs', roles: ['super_admin', 'admin'] },
   { to: '/staff', label: 'Staff & Roles', roles: ['super_admin', 'admin'] },
   { to: '/branches', label: 'Branches', roles: ['super_admin'] },
+  { to: '/transfers', label: 'Branch Transfers', roles: ['super_admin', 'admin', 'cashier', 'user'] },
 ];
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [pendingCounts, setPendingCounts] = useState(0);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await api.get('/api/transfers/pending-counts');
+        setPendingCounts(res.data.total_actionable || 0);
+      } catch (err) {
+        console.error('Failed to fetch pending transfer counts', err);
+      }
+    };
+    
+    if (user) {
+      fetchCounts();
+      // Poll every 30 seconds
+      const interval = setInterval(fetchCounts, 30000);
+      window.addEventListener('transfer_updated', fetchCounts);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('transfer_updated', fetchCounts);
+      };
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -54,14 +80,19 @@ export default function Layout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `block px-3 py-2 rounded-md text-sm transition-colors ${
+                `flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
                   isActive
                     ? 'bg-indigo-50 text-indigo-700 font-medium'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.to === '/transfers' && pendingCounts > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-red-200">
+                  {pendingCounts}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

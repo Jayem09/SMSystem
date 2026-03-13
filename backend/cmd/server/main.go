@@ -47,6 +47,7 @@ func main() {
 		Settings:      handlers.NewSettingsHandler(logService),
 		Report:        handlers.NewReportHandler(),
 		Branch:        handlers.NewBranchHandler(logService),
+		Transfer:      handlers.NewTransferHandler(logService),
 	}
 
 	// Setup Gin router

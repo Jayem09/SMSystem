@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Printer, Calendar } from 'lucide-react';
 
 interface AdvisorPerformance {
@@ -44,7 +44,7 @@ export default function DailyReport() {
     try {
       if (showLoading) setLoading(true);
       // Add timestamp to prevent browser caching
-      const res = await axios.get(`/api/reports/daily-summary?date=${date}&_t=${Date.now()}`);
+      const res = await api.get(`/api/reports/daily-summary?date=${date}&_t=${Date.now()}`);
       setData(res.data);
       setLastUpdated(new Date());
     } catch (error) {
@@ -60,7 +60,7 @@ export default function DailyReport() {
 
   if (loading && !data) return <div className="p-8 text-center text-gray-500">Loading Report...</div>;
 
-  const totalQtySold = data?.advisor_performance.reduce((acc: number, curr: AdvisorPerformance) => acc + curr.tires_sold, 0) || 0;
+  const totalQtySold = (data?.advisor_performance || []).reduce((acc: number, curr: AdvisorPerformance) => acc + curr.tires_sold, 0) || 0;
   
   // Define the exact payment methods from the user's reference image for mapping
   const paymentMethodsDisplay = [
@@ -77,10 +77,10 @@ export default function DailyReport() {
   ];
 
   const getPaymentValue = (key: string) => {
-    return data?.payment_summary.find((p: PaymentSummary) => p.method.toLowerCase() === key.toLowerCase())?.total || 0;
+    return (data?.payment_summary || []).find((p: PaymentSummary) => p.method.toLowerCase() === key.toLowerCase())?.total || 0;
   };
 
-  const totalGoodAsCash = data?.payment_summary.reduce((acc: number, curr: PaymentSummary) => acc + curr.total, 0) || 0;
+  const totalGoodAsCash = (data?.payment_summary || []).reduce((acc: number, curr: PaymentSummary) => acc + curr.total, 0) || 0;
 
   return (
     <div className="p-8 w-full min-h-screen bg-white">
@@ -140,7 +140,7 @@ export default function DailyReport() {
                 </tr>
               </thead>
               <tbody>
-                {data?.advisor_performance.map((sa: AdvisorPerformance, i: number) => (
+                {(data?.advisor_performance || []).map((sa: AdvisorPerformance, i: number) => (
                   <tr key={sa.advisor_name} className="hover:bg-gray-50 transition-colors">
                     <td className="border-2 border-black px-4 py-2.5 text-center font-black">{i + 1}</td>
                     <td className="border-2 border-black px-6 py-2.5 font-black">{sa.advisor_name}</td>
@@ -168,7 +168,7 @@ export default function DailyReport() {
                 </tr>
               </thead>
               <tbody>
-                {data?.category_sales.map((cat: CategorySale) => (
+                {(data?.category_sales || []).map((cat: CategorySale) => (
                   <tr key={cat.category} className="hover:bg-gray-50 transition-colors">
                     <td className="border-2 border-black px-6 py-2.5">{cat.category}</td>
                     <td className="border-2 border-black px-6 py-2.5 text-right font-mono">₱ {cat.total_sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

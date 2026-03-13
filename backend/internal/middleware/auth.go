@@ -51,10 +51,10 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Inject user info into Gin context
+	// Inject user info into Gin context
 		userID := uint(claims["user_id"].(float64))
 		branchID := uint(claims["branch_id"].(float64))
-		role := claims["role"].(string)
+		role := strings.ToLower(claims["role"].(string))
 
 		c.Set("userID", userID)
 		c.Set("branchID", branchID)
@@ -89,7 +89,11 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "NUCLEAR PERMISSION BLOCK",
+			"debug_role": roleStr,
+			"required_roles": roles,
+		})
 		c.Abort()
 	}
 }

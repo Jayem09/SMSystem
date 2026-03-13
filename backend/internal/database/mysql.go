@@ -104,6 +104,8 @@ func Connect(cfg *config.Config) {
 		&models.Batch{},
 		&models.StockMovement{},
 		&models.Setting{},
+		&models.StockTransfer{},
+		&models.StockTransferItem{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
