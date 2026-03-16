@@ -169,7 +169,7 @@ func (h *CustomerHandler) GetCRMStats(c *gin.Context) {
 		Select("customers.id, customers.name, customers.email, customers.phone, SUM(orders.total_amount) as total_spent, count(orders.id) as order_count, MAX(orders.created_at) as last_payment").
 		Joins("JOIN orders ON orders.customer_id = customers.id").
 		Where("orders.status = ?", "completed").
-		Group("customers.id").
+		Group("customers.id, customers.name, customers.email, customers.phone").
 		Order("total_spent DESC").
 		Limit(5).
 		Scan(&topSpenders)
@@ -181,7 +181,7 @@ func (h *CustomerHandler) GetCRMStats(c *gin.Context) {
 		Select("customers.id, customers.name, customers.email, customers.phone, SUM(orders.total_amount) as total_spent, count(orders.id) as order_count, MAX(orders.created_at) as last_payment").
 		Joins("JOIN orders ON orders.customer_id = customers.id").
 		Where("orders.status = ? AND orders.created_at >= ?", "completed", thirtyDaysAgo).
-		Group("customers.id").
+		Group("customers.id, customers.name, customers.email, customers.phone").
 		Order("last_payment DESC").
 		Scan(&recentBuyers)
 
@@ -192,7 +192,7 @@ func (h *CustomerHandler) GetCRMStats(c *gin.Context) {
 		Select("customers.id, customers.name, customers.email, customers.phone, SUM(orders.total_amount) as total_spent, count(orders.id) as order_count, MAX(orders.created_at) as last_payment").
 		Joins("JOIN orders ON orders.customer_id = customers.id").
 		Where("orders.status = ?", "completed").
-		Group("customers.id").
+		Group("customers.id, customers.name, customers.email, customers.phone").
 		Having("MAX(orders.created_at) < ?", sixtyDaysAgo).
 		Order("last_payment DESC").
 		Scan(&atRiskCustomers)
@@ -207,7 +207,7 @@ func (h *CustomerHandler) GetCRMStats(c *gin.Context) {
 		Select("categories.name as category, COUNT(order_items.id) as count").
 		Joins("JOIN products ON order_items.product_id = products.id").
 		Joins("JOIN categories ON products.category_id = categories.id").
-		Group("categories.id").
+		Group("categories.id, categories.name").
 		Order("count DESC").
 		Limit(5).
 		Scan(&categoryStats)

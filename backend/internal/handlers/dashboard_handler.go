@@ -118,7 +118,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		topProductsQuery = topProductsQuery.Where("orders.branch_id = ?", branchID)
 	}
 
-	topProductsQuery.Group("products.id").
+	topProductsQuery.Group("products.id, products.name, categories.name").
 		Order("total_qty DESC").
 		Limit(5).
 		Scan(&topProducts)

@@ -88,7 +88,7 @@ func (h *InventoryHandler) GetStockLevels(c *gin.Context) {
 		query = query.Where("batches.branch_id = ?", branchID)
 	}
 
-	query = query.Group("batches.product_id, batches.warehouse_id")
+	query = query.Group("batches.product_id, products.name, products.size, batches.warehouse_id, warehouses.name")
 
 	if search := c.Query("search"); search != "" {
 		query = query.Where("products.name LIKE ?", "%"+search+"%")

@@ -230,21 +230,6 @@ export default function Transfers() {
   });
 
   
-  console.log('TRANSFERS DEBUG:', {
-    role: user?.role,
-    isSuperAdmin,
-    myBranchId,
-    focusBranchId,
-    activeTab,
-    total: transfers.length,
-    filtered: filteredTransfers.length,
-    rawTransfers: transfers.map(t => ({
-      id: t.reference_number,
-      source: `${t.source_branch?.name} (ID:${t.source_branch_id})`,
-      dest: `${t.destination_branch?.name} (ID:${t.destination_branch_id})`,
-      status: t.status
-    }))
-  });
   
   const senderActionCount = transfers.filter(t => {
     const isActionable = t.status === 'pending' || t.status === 'approved';
@@ -272,22 +257,11 @@ export default function Transfers() {
   }).length;
 
   
-  console.log('TRANSFERS DEBUG:', {
-    role: user?.role,
-    isSuperAdmin,
-    myBranchId,
-    focusBranchId,
-    activeTab,
-    total: transfers.length,
-    filtered: filteredTransfers.length,
-    senderCount: senderActionCount,
-    receiverCount: receiverActionCount
-  });
 
   const productSearchResults = productSearch ? products.filter(p => !p.is_service && p.name.toLowerCase().includes(productSearch.toLowerCase())).slice(0, 5) : [];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto h-[calc(100vh-2rem)] flex flex-col">
+    <div className="p-6 mx-auto h-[calc(100vh-2rem)] flex flex-col">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Branch Transfers</h1>

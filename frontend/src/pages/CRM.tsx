@@ -83,7 +83,7 @@ export default function CRM() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">CRM Analytics</h1>
         <p className="text-gray-500 mt-1">Customer relationship, behavioral analysis, and retention metrics.</p>

@@ -182,7 +182,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 mx-auto">
       {}
       <div className="mb-8 flex justify-between items-end">
         <div>
@@ -201,7 +201,6 @@ export default function Dashboard() {
           <p className="text-sm font-medium text-gray-900">{new Date().toLocaleTimeString()}</p>
         </div>
       </div>
-
       {}
       {stats.low_stock_products?.length > 0 && (
         <div className="mb-8 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center shadow-sm">
@@ -218,9 +217,7 @@ export default function Dashboard() {
             VIEW PRODUCTS
           </a>
         </div>
-      )}
-
-      {}
+      )}  
       {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {[
@@ -251,7 +248,6 @@ export default function Dashboard() {
         })}
       </div>
       )}
-
       {}
       {isAdmin && (
         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm mb-8">
