@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import api from '../api/axios';
+import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
@@ -13,14 +14,14 @@ interface Product {
   description: string;
   price: number;
   stock: number;
-  is_service?: boolean; // Label as service Item
+  is_service?: boolean; 
   size?: string;
   parent_id?: number;
   category_id: number;
   brand_id: number;
   category?: Category;
   brand?: Brand;
-  // Tech Specs
+  
   pcd?: string;
   offset_et?: string;
   width?: string;
@@ -34,7 +35,7 @@ interface Product {
 
 export default function Products() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'purchasing' || user?.role === 'purchaser';
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -45,8 +46,9 @@ export default function Products() {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
-  // Form state
+  
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -57,7 +59,7 @@ export default function Products() {
   const [brandId, setBrandId] = useState('');
   const [isService, setIsService] = useState(false);
 
-  // Tech Specs State
+  
   const [pcd, setPcd] = useState('');
   const [offsetEt, setOffsetEt] = useState('');
   const [width, setWidth] = useState('');
@@ -68,7 +70,7 @@ export default function Products() {
   const [dotCode, setDotCode] = useState('');
   const [plyRating, setPlyRating] = useState('');
 
-  // Filters
+  
   const [filterCategory, setFilterCategory] = useState('');
   const [filterBrand, setFilterBrand] = useState('');
 
@@ -108,8 +110,8 @@ export default function Products() {
     fetchMeta(); 
   }, [fetchProducts, fetchMeta]);
 
-  // Debounced search is already handled by fetchProducts dependency on search/filters
-  // but if we want to keep the timeout:
+  
+  
   useEffect(() => { 
     const t = setTimeout(fetchProducts, 300); 
     return () => clearTimeout(t); 
@@ -121,7 +123,7 @@ export default function Products() {
     setSize(''); setParentId('');
     setCategoryId(''); setBrandId('');
     setIsService(false);
-    // Reset Specs
+    
     setPcd(''); setOffsetEt(''); setWidth(''); setBore(''); setFinish('');
     setSpeedRating(''); setLoadIndex(''); setDotCode(''); setPlyRating('');
     setError('');
@@ -139,7 +141,7 @@ export default function Products() {
     setCategoryId(String(p.category_id));
     setBrandId(String(p.brand_id));
     setIsService(!!p.is_service);
-    // Populate Specs
+    
     setPcd(p.pcd || ''); setOffsetEt(p.offset_et || ''); setWidth(p.width || '');
     setBore(p.bore || ''); setFinish(p.finish || ''); setSpeedRating(p.speed_rating || '');
     setLoadIndex(p.load_index || ''); setDotCode(p.dot_code || ''); setPlyRating(p.ply_rating || '');
@@ -177,6 +179,7 @@ export default function Products() {
         await api.post('/api/products', payload);
       }
       setModalOpen(false);
+      showToast(editing ? 'Product updated successfully!' : 'Product created successfully!', 'success');
       fetchProducts();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -197,9 +200,10 @@ export default function Products() {
     if (!confirm(`Delete product "${p.name}"?`)) return;
     try {
       await api.delete(`/api/products/${p.id}`);
+      showToast('Product deleted successfully!', 'success');
       fetchProducts();
     } catch {
-      alert('Failed to delete product');
+      showToast('Failed to delete product', 'error');
     }
   };
 
@@ -216,7 +220,7 @@ export default function Products() {
       const res = await api.post('/api/products/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert(res.data.message);
+      showToast(res.data.message, 'success');
       fetchProducts();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -280,7 +284,7 @@ export default function Products() {
           { key: 'category', label: 'Category', render: (p) => p.category?.name || '--' },
           { key: 'brand', label: 'Brand', render: (p) => p.brand?.name || '--' },
           { key: 'type', label: 'Type', render: (p) => p.is_service ? <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-[10px] font-black uppercase tracking-widest">Service</span> : <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-[10px] font-black uppercase tracking-widest">Item</span> },
-          // Dynamic Columns based on filter
+          
           ...(categories.find(c => String(c.id) === filterCategory)?.name?.toLowerCase()?.includes('mags') ? [
             { key: 'pcd', label: 'PCD', render: (p: Product) => p.pcd || '--' },
             { key: 'offset', label: 'ET', render: (p: Product) => p.offset_et || '--' },
@@ -369,7 +373,7 @@ export default function Products() {
             </div>
           </div>
 
-          {/* Dynamic Technical Specs */}
+          {}
           {!isService && categories.find(c => String(c.id) === categoryId)?.name?.toLowerCase()?.includes('tire') && (
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-4">
               <p className="text-xs font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Tire Specifications</p>

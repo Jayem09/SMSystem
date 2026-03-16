@@ -1,10 +1,9 @@
 import axios from 'axios';
 
-// In dev mode (npm run dev), use Vite proxy (empty baseURL)
-// In production builds (Tauri desktop app), connect directly to backend
+
+
 const baseURL = import.meta.env.DEV ? '' : 'http://localhost:8080';
 
-console.log('API baseURL:', baseURL, '| DEV mode:', import.meta.env.DEV);
 
 const api = axios.create({
   baseURL,
@@ -13,7 +12,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor – attach JWT token
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -25,14 +24,17 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor – handle 401 (expired token)
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+      if (!isAuthPage) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -35,9 +35,24 @@ type Product_Performance struct {
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
 	branchIDValue, _ := c.Get("branchID")
+	userRole, _ := c.Get("userRole")
 	var branchID uint
 	if branchIDValue != nil {
 		branchID = branchIDValue.(uint)
+	}
+
+	
+	if userRole == "super_admin" {
+		branchQuery := c.Query("branch_id")
+		if branchQuery == "ALL" {
+			branchID = 0 
+		} else if branchQuery != "" {
+			var bID uint
+			fmt.Sscanf(branchQuery, "%d", &bID)
+			if bID > 0 {
+				branchID = bID
+			}
+		}
 	}
 
 	var totalSales float64
@@ -46,7 +61,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 	var orderCount int64
 	var customerCount int64
 
-	// Base queries
+	
 	ordersQuery := database.DB.Model(&models.Order{})
 	expensesQuery := database.DB.Model(&models.Expense{})
 	if branchID != 0 {
@@ -54,8 +69,8 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		expensesQuery = expensesQuery.Where("branch_id = ?", branchID)
 	}
 
-	ordersQuery.Select("SUM(total_amount)").Scan(&totalSales)
-	expensesQuery.Select("SUM(amount)").Scan(&totalExpenses)
+	ordersQuery.Select("COALESCE(SUM(total_amount), 0)").Scan(&totalSales)
+	expensesQuery.Select("COALESCE(SUM(amount), 0)").Scan(&totalExpenses)
 	database.DB.Model(&models.Product{}).Count(&productCount)
 	ordersQuery.Count(&orderCount)
 	database.DB.Model(&models.Customer{}).Count(&customerCount)
@@ -108,17 +123,17 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		Limit(5).
 		Scan(&topProducts)
 
-	// Calculate current month and previous month stats for growth percentages
+	
 	var currentSales, prevSales float64
 	var currentExpenses, prevExpenses float64
 
-	// Current Month: 1st of DM to NOW
+	
 	cmStart := "DATE_FORMAT(NOW() ,'%Y-%m-01')"
-	// Previous Month: 1st of PM to end of PM
+	
 	pmStart := "DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')"
 	pmEnd := "LAST_DAY(DATE_SUB(NOW(), INTERVAL 1 MONTH))"
 
-	ordersQuery.Where("created_at >= " + cmStart).Select("SUM(total_amount)").Scan(&currentSales)
+	ordersQuery.Where("created_at >= " + cmStart).Select("COALESCE(SUM(total_amount), 0)").Scan(&currentSales)
 	database.DB.Model(&models.Order{}).
 		Where(func() string {
 			if branchID != 0 {
@@ -127,9 +142,10 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			return "1=1"
 		}(), branchID).
 		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd).
-		Select("SUM(total_amount)").Scan(&prevSales)
+		Select("COALESCE(SUM(total_amount), 0)").Scan(&prevSales)
 
-	expensesQuery.Where("created_at >= " + cmStart).Select("SUM(amount)").Scan(&currentExpenses)
+	expensesQuery.Where("created_at >= " + cmStart).Select("COALESCE(SUM(amount), 0)").Scan(&currentExpenses)
+
 	database.DB.Model(&models.Expense{}).
 		Where(func() string {
 			if branchID != 0 {
@@ -138,7 +154,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			return "1=1"
 		}(), branchID).
 		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd).
-		Select("SUM(amount)").Scan(&prevExpenses)
+		Select("COALESCE(SUM(amount), 0)").Scan(&prevExpenses)
 
 	calculateChange := func(current, prev float64) string {
 		if prev == 0 {

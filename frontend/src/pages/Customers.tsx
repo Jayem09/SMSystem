@@ -24,7 +24,7 @@ interface Customer {
 
 export default function Customers() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'purchasing' || user?.role === 'purchaser';
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -202,7 +202,7 @@ export default function Customers() {
         </form>
       </Modal>
 
-      {/* History Modal */}
+      {}
       <Modal open={historyModalOpen} onClose={() => setHistoryModalOpen(false)} title="Purchase History">
         <div className="p-4">
           <div className="mb-6 pb-6 border-b border-gray-100">

@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import api from '../api/axios';
+import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
@@ -20,8 +21,9 @@ export default function Suppliers() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
-  // Form state
+  
   const [name, setName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
@@ -81,6 +83,7 @@ export default function Suppliers() {
         await api.post('/api/suppliers', payload);
       }
       setModalOpen(false);
+      showToast(editing ? 'Supplier updated successfully!' : 'Supplier created successfully!', 'success');
       fetchSuppliers();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -92,9 +95,10 @@ export default function Suppliers() {
     if (!confirm(`Delete supplier "${supplier.name}"?`)) return;
     try {
       await api.delete(`/api/suppliers/${supplier.id}`);
+      showToast('Supplier deleted successfully!', 'success');
       fetchSuppliers();
     } catch {
-      alert('Failed to delete supplier');
+      showToast('Failed to delete supplier', 'error');
     }
   };
 

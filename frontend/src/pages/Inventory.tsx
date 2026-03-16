@@ -14,6 +14,7 @@ import {
   FileDown,
   X
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 interface Warehouse {
   id: number;
@@ -51,7 +52,7 @@ interface MovementLog {
   user: { name: string } | null;
 }
 
-// Input for creating PO items
+
 interface ItemInput {
   product_id: number;
   quantity: number;
@@ -60,38 +61,37 @@ interface ItemInput {
 
 export default function Inventory() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'purchasing' || user?.role === 'purchaser';
   const [activeTab, setActiveTab] = useState<'levels' | 'in' | 'out' | 'logs'>('levels');
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [productSearch, setProductSearch] = useState('');
   
-  // Data states
+  
   const [stockLevels, setStockLevels] = useState<StockLevel[]>([]);
   const [logs, setLogs] = useState<MovementLog[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Form states
+  
   const [search, setSearch] = useState('');
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [reference, setReference] = useState('');
   
-  // Stock In (PO) specific states
+  
   const [items, setItems] = useState<ItemInput[]>([{ product_id: 0, quantity: 1, unit_cost: 0 }]);
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Stock Out specific states
+  
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
-  const [submitError, setSubmitError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { showToast } = useToast();
 
-  // Kebab menu & edit modal state
+  
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editLog, setEditLog] = useState<MovementLog | null>(null);
   const [editQty, setEditQty] = useState('');
@@ -204,7 +204,7 @@ export default function Inventory() {
     }
   };
 
-  // PO Item management helpers
+  
   const addItem = () => setItems([...items, { product_id: 0, quantity: 1, unit_cost: 0 }]);
   const removeItem = (index: number) => setItems(items.filter((_, i) => i !== index));
   const updateItem = (index: number, field: keyof ItemInput, value: number) => {
@@ -216,15 +216,13 @@ export default function Inventory() {
 
   const handleStockSubmit = async (e: React.FormEvent, type: 'in' | 'out') => {
     e.preventDefault();
-    setSubmitError('');
-    setSuccessMsg('');
     setSubmitting(true);
 
     try {
       if (type === 'in') {
         const validItems = items.filter(item => item.product_id > 0 && item.quantity > 0);
         if (validItems.length === 0) {
-          setSubmitError('Add at least one complete item (product and quantity).');
+          showToast('Add at least one complete item (product and quantity).', 'error');
           setSubmitting(false);
           return;
         }
@@ -236,9 +234,9 @@ export default function Inventory() {
           items: validItems
         };
         await api.post('/api/purchase-orders', payload);
-        setSuccessMsg('Successfully created a new Pending Purchase Order!');
+        showToast('Successfully created a new Pending Purchase Order!', 'success');
         
-        // Reset form
+        
         setSupplierId('');
         setOrderDate(new Date().toISOString().split('T')[0]);
         setReference('');
@@ -253,9 +251,9 @@ export default function Inventory() {
           expiry_date: expiryDate ? new Date(expiryDate).toISOString() : undefined,
         };
         await api.post(`/api/inventory/out`, payload);
-        setSuccessMsg(`Successfully logged stock out!`);
+        showToast(`Successfully logged stock out!`, 'success');
         
-        // Reset form
+        
         setProductId('');
         setQuantity('');
         setReference('');
@@ -263,7 +261,7 @@ export default function Inventory() {
         setExpiryDate('');
       }
     } catch (err: any) {
-      setSubmitError(err.response?.data?.error || 'Failed to submit');
+      showToast(err.response?.data?.error || 'Failed to submit', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -282,7 +280,7 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {}
       <div className="flex space-x-1 border-b border-gray-200">
         {[
           { id: 'levels', label: 'Stock Levels', icon: Package },
@@ -307,7 +305,7 @@ export default function Inventory() {
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm min-h-[500px]">
         
-        {/* TAB: STOCK LEVELS */}
+        {}
         {activeTab === 'levels' && (
           <div className="p-0">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -365,7 +363,7 @@ export default function Inventory() {
           </div>
         )}
 
-        {/* TAB: STOCK IN */}
+        {}
         {activeTab === 'in' && (
           <div className="max-w-xl mx-auto p-8">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
@@ -373,8 +371,6 @@ export default function Inventory() {
               Receive New Stock
             </h2>
             
-            {submitError && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{submitError}</div>}
-            {successMsg && <div className="mb-4 p-3 bg-green-50 text-green-600 text-sm rounded-lg border border-green-100">{successMsg}</div>}
 
             <form onSubmit={(e) => handleStockSubmit(e, 'in')} className="space-y-5">
               <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100 flex items-start gap-2">
@@ -401,7 +397,7 @@ export default function Inventory() {
                 <input type="text" value={reference} onChange={e => setReference(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500" placeholder="Optional notes" />
               </div>
 
-              {/* Dynamic Items Array */}
+              {}
               <div className="pt-2">
                 <div className="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
                   <label className="text-sm font-semibold text-gray-900">Purchase Order Items</label>
@@ -486,7 +482,7 @@ export default function Inventory() {
           </div>
         )}
 
-        {/* TAB: STOCK OUT */}
+        {}
         {activeTab === 'out' && (
           <div className="max-w-xl mx-auto p-8">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
@@ -495,8 +491,6 @@ export default function Inventory() {
             </h2>
             <p className="text-sm text-gray-500 mb-6">Use this to manually deduct stock for damages, expired goods, or internal transfers. Sales will automatically deduct stock.</p>
             
-            {submitError && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{submitError}</div>}
-            {successMsg && <div className="mb-4 p-3 bg-green-50 text-green-600 text-sm rounded-lg border border-green-100">{successMsg}</div>}
 
             <form onSubmit={(e) => handleStockSubmit(e, 'out')} className="space-y-5">
               <div>
@@ -539,7 +533,7 @@ export default function Inventory() {
           </div>
         )}
 
-        {/* TAB: LOGS */}
+        {}
         {activeTab === 'logs' && (
           <div className="p-0">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -643,7 +637,7 @@ export default function Inventory() {
 
       </div>
 
-      {/* Edit / Adjust Modal */}
+      {}
       {editLog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">

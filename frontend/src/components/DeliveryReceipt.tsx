@@ -32,11 +32,11 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
   const date = new Date(order.created_at);
   const dateStr = date.toLocaleDateString('en-PH', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-  // Customer info
+  
   const customerName = order.customer?.name || order.guest_name || 'WALK-IN';
   const custAddress = (order.customer?.address || businessAddress || '').toUpperCase();
 
-  // Simple total (No Tax)
+  
   const totalAmount = order.total_amount || 0;
   const fmt = (n: number | undefined | null) => (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -108,21 +108,10 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
 
         /* Hide background + toolbar when actually printing */
         @media print {
-          /* TEMP: Allow background image on print for alignment verification */
-           .bg-template { 
-             display: block !important; 
-             opacity: 0.25 !important; 
-             -webkit-print-color-adjust: exact !important; 
-             print-color-adjust: exact !important; 
-           }
-           .bg-template img { 
-             display: block !important; 
-             opacity: 0.25 !important; 
-           }
           .toolbar { display: none !important; }
         }
 
-        /* All text fields sit above the background */
+        
         .date-field, .reg-name, .tin-field, .address,
         .items-table, .vatable-sales, .vat-amount-left,
         .zero-rated, .vat-exempt, .total-vat-incl,
@@ -131,11 +120,7 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
           z-index: 1;
         }
 
-        /* ══════════════════════════════════════════════
-           POSITION GUIDE — calibrated from scanned form
-           Paper: Letter 8.5" × 11"
-           All values are in inches from top-left corner.
-           ══════════════════════════════════════════════ */
+        
 
         /* ---------- Customer Info Section ---------- */
         .reg-name {
@@ -226,19 +211,7 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
         }
       </style>
     </head>
-    <body>
-
-      <!-- Toolbar for preview controls (hidden when printing) -->
-      <div class="toolbar">
-        <button class="btn-toggle" onclick="toggleBg()">Toggle Background</button>
-        <button class="btn-print" onclick="window.print()">🖨️ Print</button>
-        <button class="btn-close" onclick="window.close()">✕ Close</button>
-      </div>
-
-      <!-- Scanned form background (visible on screen only) -->
-      <div class="bg-template" id="bgTemplate">
-        <img src="/PLDT_NEW_SI_FORMAT.png" alt="Invoice template" />
-      </div>
+    <body onload="window.print()">
 
       <!-- Customer Info -->
       <div class="date-field">${dateStr}</div>
@@ -251,16 +224,6 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
       <!-- Total Amount Only -->
       <div class="total-due">${fmt(totalAmount)}</div>
 
-      <script>
-        function toggleBg() {
-          const bg = document.getElementById('bgTemplate');
-          if (bg.style.display === 'none') {
-            bg.style.display = 'block';
-          } else {
-            bg.style.display = 'none';
-          }
-        }
-      </script>
     </body>
     </html>
   `;

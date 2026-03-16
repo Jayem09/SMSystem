@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Printer, Calendar } from 'lucide-react';
 
 interface AdvisorPerformance {
@@ -35,7 +35,7 @@ export default function DailyReport() {
   useEffect(() => {
     fetchReport(true);
     
-    // Auto-refresh every 15 seconds for more "real-time" feel
+    
     const interval = setInterval(() => fetchReport(false), 15000);
     return () => clearInterval(interval);
   }, [date]);
@@ -43,8 +43,8 @@ export default function DailyReport() {
   const fetchReport = async (showLoading: boolean) => {
     try {
       if (showLoading) setLoading(true);
-      // Add timestamp to prevent browser caching
-      const res = await axios.get(`/api/reports/daily-summary?date=${date}&_t=${Date.now()}`);
+      
+      const res = await api.get(`/api/reports/daily-summary?date=${date}&_t=${Date.now()}`);
       setData(res.data);
       setLastUpdated(new Date());
     } catch (error) {
@@ -60,9 +60,9 @@ export default function DailyReport() {
 
   if (loading && !data) return <div className="p-8 text-center text-gray-500">Loading Report...</div>;
 
-  const totalQtySold = data?.advisor_performance.reduce((acc: number, curr: AdvisorPerformance) => acc + curr.tires_sold, 0) || 0;
+  const totalQtySold = (data?.advisor_performance || []).reduce((acc: number, curr: AdvisorPerformance) => acc + curr.tires_sold, 0) || 0;
   
-  // Define the exact payment methods from the user's reference image for mapping
+  
   const paymentMethodsDisplay = [
     { key: 'cash', label: 'CASH' },
     { key: 'dated_check', label: 'DATED CHECK' },
@@ -77,14 +77,14 @@ export default function DailyReport() {
   ];
 
   const getPaymentValue = (key: string) => {
-    return data?.payment_summary.find((p: PaymentSummary) => p.method.toLowerCase() === key.toLowerCase())?.total || 0;
+    return (data?.payment_summary || []).find((p: PaymentSummary) => p.method.toLowerCase() === key.toLowerCase())?.total || 0;
   };
 
-  const totalGoodAsCash = data?.payment_summary.reduce((acc: number, curr: PaymentSummary) => acc + curr.total, 0) || 0;
+  const totalGoodAsCash = (data?.payment_summary || []).reduce((acc: number, curr: PaymentSummary) => acc + curr.total, 0) || 0;
 
   return (
     <div className="p-8 w-full min-h-screen bg-white">
-      {/* Controls - Hidden on Print */}
+      {}
       <div className="flex justify-between items-center mb-8 no-print pb-6 border-b border-gray-100">
         <div className="flex items-center gap-6">
           <div>
@@ -114,7 +114,7 @@ export default function DailyReport() {
         </button>
       </div>
 
-      {/* Report Header */}
+      {}
       <div className="text-center mb-10">
         <h2 className="text-red-600 text-4xl font-black uppercase tracking-tighter mb-2">LIPA B - MATAAS NA LUPA BRANCH</h2>
         <div className="inline-block px-6 py-2 bg-gray-900 text-white rounded-full font-black text-lg">
@@ -123,9 +123,9 @@ export default function DailyReport() {
       </div>
 
       <div className="grid grid-cols-12 gap-10 items-start">
-        {/* Left Column (Advisors & Categories) */}
+        {}
         <div className="col-span-7 space-y-12">
-          {/* SA Performance */}
+          {}
           <section>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-black text-gray-900 uppercase">Service Advisor Performance</h3>
@@ -140,7 +140,7 @@ export default function DailyReport() {
                 </tr>
               </thead>
               <tbody>
-                {data?.advisor_performance.map((sa: AdvisorPerformance, i: number) => (
+                {(data?.advisor_performance || []).map((sa: AdvisorPerformance, i: number) => (
                   <tr key={sa.advisor_name} className="hover:bg-gray-50 transition-colors">
                     <td className="border-2 border-black px-4 py-2.5 text-center font-black">{i + 1}</td>
                     <td className="border-2 border-black px-6 py-2.5 font-black">{sa.advisor_name}</td>
@@ -155,7 +155,7 @@ export default function DailyReport() {
             </table>
           </section>
 
-          {/* Category Sales */}
+          {}
           <section>
             <div className="mb-4">
               <h3 className="text-lg font-black text-gray-900 uppercase">Sales Breakdown by Category</h3>
@@ -168,7 +168,7 @@ export default function DailyReport() {
                 </tr>
               </thead>
               <tbody>
-                {data?.category_sales.map((cat: CategorySale) => (
+                {(data?.category_sales || []).map((cat: CategorySale) => (
                   <tr key={cat.category} className="hover:bg-gray-50 transition-colors">
                     <td className="border-2 border-black px-6 py-2.5">{cat.category}</td>
                     <td className="border-2 border-black px-6 py-2.5 text-right font-mono">₱ {cat.total_sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -183,9 +183,9 @@ export default function DailyReport() {
           </section>
         </div>
 
-        {/* Right Column (Payments & Receivables) */}
+        {}
         <div className="col-span-5 space-y-10">
-          {/* Payment Methods */}
+          {}
           <section>
             <div className="mb-4">
               <h3 className="text-lg font-black text-gray-900 uppercase">Payment Summary</h3>
@@ -215,7 +215,7 @@ export default function DailyReport() {
             </table>
           </section>
 
-          {/* Account Receivables */}
+          {}
           <section className="bg-yellow-100 border-4 border-black p-6 flex justify-between items-center shadow-lg">
             <div>
               <span className="text-xl font-black uppercase text-gray-900 block">ACCOUNT RECEIVABLES</span>
@@ -226,7 +226,7 @@ export default function DailyReport() {
         </div>
       </div>
 
-      {/* Print Specific CSS */}
+      {}
       <style>{`
         @media print {
           @page {
@@ -240,7 +240,7 @@ export default function DailyReport() {
           .p-8 { padding: 0 !important; }
           .w-full { width: 100% !important; }
           
-          /* Force side-by-side layout in print */
+          
           .grid-cols-12 { display: flex !important; gap: 20px !important; }
           .col-span-7 { width: 58% !important; }
           .col-span-5 { width: 42% !important; }
