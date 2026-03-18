@@ -1,4 +1,11 @@
-
+/**
+ * Sales Invoice Receipt — prints TEXT ONLY onto pre-printed LETTER (19.5" x 13.5") invoice paper.
+ * All positions use absolute positioning (in inches) to align with form fields.
+ * No borders or boxes are printed — those are already on the paper.
+ *
+ * PREVIEW MODE: Shows scanned form as background so you can visually align text.
+ * The background is hidden when printing (@media print).
+ */
 
 interface ReceiptOrderItem {
   id: number;
@@ -33,26 +40,26 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
   const totalAmount = order.total_amount || 0;
   const fmt = (n: number | undefined | null) => (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  
-  
-  const items = order.items || [];
+  // Build item rows using absolute positioning for columns
+  const MAX_ROWS = 10;
+  const items = (order.items || []).slice(0, MAX_ROWS);
   const itemRows = items.map((item, index) => {
-    const unitPrice = item.unit_price ?? item.price ?? (item.subtotal && item.quantity ? item.subtotal / item.quantity : 0);
-    const subtotal = item.subtotal ?? 0;
-    const unit = "PCS"; 
+  const unitPrice = item.unit_price ?? item.price ?? (item.subtotal / item.quantity);
+  const subtotal = item.subtotal ?? 0;
+  const unit = "PCS";
     
-    
-    const baseTop = 3.47; 
-    const rowHeight = 0.29;
+    // Calculate the Y position for this row.
+    const baseTop = 2.70;
+    const rowHeight = 0.30;
     const topPos = baseTop + (index * rowHeight);
 
     return `
       <!-- Row ${index + 1} -->
-      <div class="col-qty"   style="top: calc(${topPos}in + var(--printer-offset)); left: 0.60in;">${item.quantity}</div>
-      <div class="col-unit"  style="top: calc(${topPos}in + var(--printer-offset)); left: 1.05in;">${unit}</div>
-      <div class="col-desc"  style="top: calc(${topPos}in + var(--printer-offset)); left: 1.65in;">${item.product?.name || ''}</div>
-      <div class="col-price" style="top: calc(${topPos}in + var(--printer-offset)); left: 5.30in;">${fmt(unitPrice)}</div>
-      <div class="col-amt"   style="top: calc(${topPos}in + var(--printer-offset)); left: 6.50in;">${fmt(subtotal)}</div>
+    <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:0.80in;">${item.quantity}</div>
+    <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:1.50in;">${unit}</div>
+    <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:2.20in;">${item.product?.name || ''}</div>
+    <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:5.60in;">${fmt(unitPrice)}</div>
+    <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:6.70in;">${fmt(subtotal)}</div>
     `;
   }).join('');
 
@@ -64,21 +71,42 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page {
-          size: 8.27in 11.69in;
+          size: 7.68in 5.31in;
           margin: 0;
         }
         body {
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 15px;
-          color: #000;
-          width: 8.27in;
-          height: 11.69in;
+          width: 7.68in;
+          height: 5.31in;
+          transform-origin: top left;
+          font-family: "Courier New", monospace;
           position: relative;
-          
-          --printer-offset: 0in;
+          /* ★ PRINTER OFFSET — adjust this single value to shift ALL text up/down ★
+             Negative = move UP, Positive = move DOWN
+             Change this when switching printers */
+          --offset-x: 0in;
+          --offset-y: 0in;
         }
 
-        
+        /* ═══════════════════════════════════════════════
+           BACKGROUND TEMPLATE — visible on screen only
+           Hidden when printing on actual pre-printed paper
+           ═══════════════════════════════════════════════ */
+        .bg-template {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 7.68in;
+          height: 5.31in;
+          opacity: 0.25;
+          z-index: 0;
+        }
+        .bg-template img {
+          width: 100%;
+          height: 100%;
+          object-fit: fill;
+        }
+
+        /* Hide background + toolbar when actually printing */
         @media print {
           .toolbar { display: none !important; }
         }
@@ -94,12 +122,31 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
 
         
 
-        
-        .date-field { position: absolute; top: calc(1.60in + var(--printer-offset));  left: 5.80in;  font-size: 15px; }
-        .reg-name   { position: absolute; top: calc(2.15in + var(--printer-offset));  left: 1.90in;  font-size: 15px; }
-        .address    { position: absolute; top: calc(2.55in + var(--printer-offset));  left: 1.05in;  font-size: 14px; width: 4.5in; line-height: 1.2; }
+        /* ---------- Customer Info Section ---------- */
+        .reg-name {
+          position:absolute;
+          top:calc(1.70in + var(--offset-y));
+          left:1.30in;
+          font-size:15px;
+        }
 
-        
+        .address{
+          position:absolute;
+          top:calc(2.00in + var(--offset-y));
+          left:1.30in;
+          font-size:15px;
+          width:4.5in;
+        }
+
+        .date-field{
+          position:absolute;
+          top:calc(2.00in + var(--offset-y));
+          left:6.10in;
+          font-size:15px;
+        }
+        .tin-field   { position: absolute; top: calc(2.50in + var(--offset-y));  left: 1.05in;  font-size: 15px; }
+  
+        /* ---------- Items (Absolute Layout) ---------- */
         .col-qty, .col-unit, .col-desc, .col-price, .col-amt {
           position: absolute;
           font-size: 15px;
@@ -115,8 +162,53 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
         .col-price { width: 1.0in; text-align: right; }
         .col-amt   { width: 1.0in; text-align: right; }
 
-        
-        .total-due { position: absolute; top: calc(8.75in + var(--printer-offset)); left: 6.20in; font-size: 18px; font-weight: bold; text-align: right; width: 1.5in; border-top: 1px solid #000; padding-top: 5px; }
+        /* ---------- Tax Summary (Bottom Left) ---------- */
+        .vatable-sales   { position: absolute; top: calc(7.10in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
+        .vat-amount-left { position: absolute; top: calc(7.35in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
+        .zero-rated      { position: absolute; top: calc(7.65in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
+        .vat-exempt      { position: absolute; top: calc(7.90in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
+
+        /* ---------- Tax Summary (Bottom Right) ---------- */
+        .total-vat-incl  { position: absolute; top: calc(7.10in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .less-vat        { position: absolute; top: calc(7.35in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .net-of-vat      { position: absolute; top: calc(7.65in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .less-discount   { position: absolute; top: calc(7.95in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .add-vat         { position: absolute; top: calc(8.20in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .less-withholding { position: absolute; top: calc(8.45in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
+        .total-due       { position: absolute; top: calc(8.80in + var(--offset-y)); left: 6.70in; font-size: 15px; text-align: right; width: 1.5in; font-weight: bold; }position:absolute; }
+        /* ---------- Toolbar ---------- */
+        .toolbar {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          z-index: 9999;
+          display: flex;
+          gap: 8px;
+          background: #333;
+          padding: 8px 12px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .toolbar button {
+          padding: 6px 14px;
+          font-size: 13px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: bold;
+        }
+        .btn-print {
+          background: #4CAF50;
+          color: white;
+        }
+        .btn-toggle {
+          background: #2196F3;
+          color: white;
+        }
+        .btn-close {
+          background: #f44336;
+          color: white;
+        }
       </style>
     </head>
     <body onload="window.print()">
