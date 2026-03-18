@@ -28,3 +28,5 @@ Thumbs.db
 
 # Tauri
 frontend/src-tauri/target/
+frontend/.env.production
+*.zip
