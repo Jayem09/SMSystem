@@ -16,16 +16,16 @@ export default function Register() {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   useEffect(() => {
-    const checkHealth = async () => {
+    const initPage = async () => {
       try {
         await api.get('/api/health');
         setBackendStatus('online');
       } catch (err) {
-        console.error('Backend health check failed:', err);
+        console.error('Initialization failed:', err);
         setBackendStatus('offline');
       }
     };
-    checkHealth();
+    initPage();
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -54,15 +54,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+    <div className="min-h-screen items-center justify-center px-4 bg-gray-50 flex flex-col py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <h1 className="text-xl font-semibold text-gray-900">SMSystem</h1>
           <p className="text-sm text-gray-500 mt-1">Create a new account</p>
           <div className="mt-2 flex justify-center">
-            {backendStatus === 'checking' && <span className="text-[10px] text-gray-400">Checking connection...</span>}
-            {backendStatus === 'online' && <span className="text-[10px] text-green-500 flex items-center">● Backend Online</span>}
-            {backendStatus === 'offline' && <span className="text-[10px] text-red-500 flex items-center">● Backend Offline (Check Docker)</span>}
+            {backendStatus === 'checking' && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse">Checking connection...</span>}
+            {backendStatus === 'online' && <span className="text-[10px] text-green-500 font-bold uppercase tracking-widest flex items-center gap-1">● Backend Online</span>}
+            {backendStatus === 'offline' && <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest flex items-center gap-1">● Backend Offline</span>}
           </div>
         </div>
 
@@ -77,8 +77,8 @@ export default function Register() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                placeholder="Your name"
+                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Manager Name"
               />
             </div>
 
@@ -90,10 +90,11 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                placeholder="you@example.com"
+                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="you@smsystem.com"
               />
             </div>
+
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-1">Password</label>
@@ -104,8 +105,7 @@ export default function Register() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                placeholder="Min. 6 characters"
+                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
@@ -117,17 +117,16 @@ export default function Register() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                placeholder="Repeat password"
+                className="w-full px-3 py-2 rounded-md border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50 cursor-pointer"
+              disabled={isSubmitting || backendStatus !== 'online'}
+              className="w-full py-2 px-4 rounded-md text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? 'Creating account...' : 'Create Account'}
+              {isSubmitting ? 'CREATING...' : 'CREATE ACCOUNT'}
             </button>
           </form>
 

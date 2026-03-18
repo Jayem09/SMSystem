@@ -2,7 +2,7 @@ import axios from 'axios';
 
 
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const baseURL = localStorage.getItem('api_base_url') || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 
 const api = axios.create({

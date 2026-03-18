@@ -168,9 +168,9 @@ export default function Staff() {
         >
           {currentUser?.role === 'super_admin' && <option value="super_admin">Super Admin (Owner)</option>}
           <option value="admin">Branch Admin (Manager)</option>
-          <option value="cashier">Cashier (Staff)</option>
           <option value="purchasing">Purchasing (Inventory)</option>
-          <option value="user">Unverified User</option>
+          <option value="user">Verified User (Regular)</option>
+          <option value="pending">Pending Approval (New)</option>
         </select>
       )
     },

@@ -60,14 +60,12 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
-	
-	role := "user"
+	// Default role is "pending" for new employees
+	role := "pending"
 
-	
+	// Default to the first branch as a placeholder until admin assigns one
 	var firstBranch models.Branch
-	if err := database.DB.First(&firstBranch).Error; err != nil {
-		return nil, errors.New("failed to find a default branch: " + err.Error())
-	}
+	database.DB.First(&firstBranch)
 
 	user := models.User{
 		Name:     input.Name,

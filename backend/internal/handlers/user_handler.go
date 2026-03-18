@@ -94,7 +94,7 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	if req.Role != "admin" && req.Role != "cashier" && req.Role != "user" && req.Role != "purchasing" {
+	if req.Role != "admin" && req.Role != "cashier" && req.Role != "user" && req.Role != "purchasing" && req.Role != "pending" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role specified"})
 		return
 	}

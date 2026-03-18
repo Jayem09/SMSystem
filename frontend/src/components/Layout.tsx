@@ -60,6 +60,35 @@ export default function Layout() {
   
   const currentRole = user?.role || 'user';
 
+  if (user?.role === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-xl">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Account Pending Approval</h1>
+          <p className="text-gray-500 mb-8 leading-relaxed">
+            Your account has been successfully created. For security, a <strong>Super Admin</strong> must assign your role and branch before you can access the system.
+          </p>
+          <div className="space-y-3">
+            <div className="p-4 bg-gray-50 rounded-xl text-sm text-gray-600 border border-gray-100 italic">
+              "Please contact your Manager or Super Admin to set up your access."
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200"
+            >
+              LOGOUT & TRY LATER
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {}
