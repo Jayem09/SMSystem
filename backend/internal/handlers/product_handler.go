@@ -169,7 +169,7 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		Name:        input.Name,
 		Description: input.Description,
 		Price:       input.Price,
-		Stock:       0, 
+		Stock:       input.Stock, 
 		Size:        input.Size,
 		ParentID:    input.ParentID,
 		ImageURL:    input.ImageURL,
@@ -187,10 +187,14 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		IsService:   input.IsService,
 	}
 
-	branchID, _ := c.Get("branchID")
+	branchIDValue, _ := c.Get("branchID")
 	userIDValue, _ := c.Get("userID")
 
-	
+	bID := branchIDValue.(uint)
+	if bID == 0 {
+		bID = 1 
+	}
+
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&product).Error; err != nil {
 			return err
@@ -199,14 +203,14 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		
 		if input.Stock > 0 && !input.IsService {
 			var warehouse models.Warehouse
-			if err := tx.Where("branch_id = ?", branchID).First(&warehouse).Error; err != nil {
+			if err := tx.Where("branch_id = ?", bID).First(&warehouse).Error; err != nil {
 				return fmt.Errorf("no warehouse found for this branch to store initial stock")
 			}
 
 			batch := models.Batch{
 				ProductID:   product.ID,
 				WarehouseID: warehouse.ID,
-				BranchID:    branchID.(uint),
+				BranchID:    bID,
 				BatchNumber: "INITIAL",
 				Quantity:    input.Stock,
 			}
@@ -224,7 +228,7 @@ func (h *ProductHandler) Create(c *gin.Context) {
 				ProductID:   product.ID,
 				BatchID:     &batch.ID,
 				WarehouseID: warehouse.ID,
-				BranchID:    branchID.(uint),
+				BranchID:    bID,
 				UserID:      userID,
 				Type:        models.MovementTypeIn,
 				Quantity:    input.Stock,
@@ -244,7 +248,7 @@ func (h *ProductHandler) Create(c *gin.Context) {
 
 	
 	database.DB.Preload("Category").Preload("Brand").
-		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", bID).
 		First(&product, product.ID)
 
 	if userIDValue != nil {
@@ -293,20 +297,31 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	product.DOTCode = input.DOTCode
 	product.PlyRating = input.PlyRating
 	product.IsService = input.IsService
+	product.Stock = input.Stock
 
-	branchID, _ := c.Get("branchID")
+	branchIDValue, _ := c.Get("branchID")
 	userIDValue, _ := c.Get("userID")
+
+	bID := branchIDValue.(uint)
+	if bID == 0 {
+		bID = 1 
+	}
 
 	
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		
 		var currentStock int
 		tx.Model(&models.Batch{}).
-			Where("product_id = ? AND branch_id = ?", product.ID, branchID).
+			Where("product_id = ? AND branch_id = ?", product.ID, bID).
 			Select("COALESCE(SUM(quantity), 0)").
 			Row().Scan(&currentStock)
 
 		if err := tx.Save(&product).Error; err != nil {
+			return err
+		}
+
+		// FORCE update the stock column, bypassing any GORM computed-column protections
+		if err := tx.Model(&product).UpdateColumn("stock", input.Stock).Error; err != nil {
 			return err
 		}
 
@@ -315,7 +330,7 @@ func (h *ProductHandler) Update(c *gin.Context) {
 			diff := input.Stock - currentStock
 
 			var warehouse models.Warehouse
-			if err := tx.Where("branch_id = ?", branchID).First(&warehouse).Error; err != nil {
+			if err := tx.Where("branch_id = ?", bID).First(&warehouse).Error; err != nil {
 				return fmt.Errorf("no warehouse found for this branch to store adjustment")
 			}
 
@@ -323,7 +338,7 @@ func (h *ProductHandler) Update(c *gin.Context) {
 			batch := models.Batch{
 				ProductID:   product.ID,
 				WarehouseID: warehouse.ID,
-				BranchID:    branchID.(uint),
+				BranchID:    bID,
 				BatchNumber: fmt.Sprintf("ADJ-%s", time.Now().Format("20060102")),
 				Quantity:    diff,
 			}
@@ -341,7 +356,7 @@ func (h *ProductHandler) Update(c *gin.Context) {
 				ProductID:   product.ID,
 				BatchID:     &batch.ID,
 				WarehouseID: warehouse.ID,
-				BranchID:    branchID.(uint),
+				BranchID:    bID,
 				UserID:      userID,
 				Type:        models.MovementTypeAdjustment,
 				Quantity:    diff,
@@ -370,7 +385,7 @@ func (h *ProductHandler) Update(c *gin.Context) {
 
 	
 	database.DB.Preload("Category").Preload("Brand").
-		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", branchID).
+		Select("products.*, (SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) as stock", bID).
 		First(&product, product.ID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Product updated", "product": product})

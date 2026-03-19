@@ -126,7 +126,11 @@ func (h *OrderHandler) Create(c *gin.Context) {
 
 	
 	var order models.Order
-	order.BranchID = branchID.(uint)
+	bID := branchID.(uint)
+	if bID == 0 {
+		bID = 1
+	}
+	order.BranchID = bID
 	uID := userID.(uint)
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -141,8 +145,14 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			}
 
 			if orderStatus == "completed" && !product.IsService {
-				if product.Stock < item.Quantity {
-					return errors.New("insufficient stock for " + product.Name + " (available: " + strconv.Itoa(product.Stock) + ")")
+				var currentStock int
+				tx.Model(&models.Batch{}).
+					Where("product_id = ? AND branch_id = ?", product.ID, order.BranchID).
+					Select("COALESCE(SUM(quantity), 0)").
+					Row().Scan(&currentStock)
+
+				if currentStock < item.Quantity {
+					return errors.New("insufficient stock for " + product.Name + " (available: " + strconv.Itoa(currentStock) + ")")
 				}
 			}
 
