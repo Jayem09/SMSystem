@@ -48,9 +48,20 @@ const api = axios.create({
         ? config.url 
         : `${config.baseURL}${config.url}${config.params ? '?' + new URLSearchParams(config.params).toString() : ''}`;
 
+      // CONVERSION: Ensure headers are a plain object (not AxiosHeaders)
+      // This is crucial for @tauri-apps/plugin-http's fetch to work correctly
+      const plainHeaders: Record<string, string> = {};
+      if (config.headers) {
+        Object.entries(config.headers).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            plainHeaders[key] = String(value);
+          }
+        });
+      }
+
       const tauriResponse = await fetch(fullUrl, {
         method: (config.method?.toUpperCase() as any) || 'GET',
-        headers: config.headers as any,
+        headers: plainHeaders,
         body: config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : undefined,
         connectTimeout: config.timeout || 10000,
       });
