@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SMSytem",
-  "version": "0.2.26",
+  "version": "0.2.27",
   "identifier": "com.smsystem.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -38,6 +38,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
