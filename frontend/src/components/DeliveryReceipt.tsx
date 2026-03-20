@@ -75,8 +75,8 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
           margin: 0;
           padding: 0;
           box-sizing: border-box;
-          width: 8.5in;
-          height: 5.5in;
+          width: 8.27in;
+          height: 11.69in;
           overflow: hidden;
           position: relative;
           font-family: "Courier New", monospace;
@@ -87,7 +87,7 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
         .bir-delivery-app * { margin: 0; padding: 0; box-sizing: border-box; }
         
         @page {
-          size: 8.5in 5.5in;
+          size: 8.27in 11.69in;
           margin: 0;
         }
 
