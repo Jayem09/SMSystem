@@ -303,6 +303,7 @@ export default function Products() {
           { key: 'price', label: 'Selling Price', render: (p) => `P ${p.price.toLocaleString()}` },
           { key: 'stock', label: 'Stock', render: (p) => (
             p.is_service ? <span className="text-gray-400 font-bold">N/A</span> :
+            p.branch_stock === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-600">OUT</span> :
             <span className={p.branch_stock <= 5 ? 'text-red-600 font-medium' : ''}>{p.branch_stock}</span>
           )},
         ]}
