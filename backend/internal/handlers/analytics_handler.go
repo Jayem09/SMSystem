@@ -214,7 +214,7 @@ func (h *AnalyticsHandler) getQueryPatterns() []QueryPattern {
 			Parser: func(question string, branchID uint, _ interface{}) *QueryResult {
 				db := database.DB
 				period := h.parsePeriod(question)
-				query := `SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status != 'cancelled'`
+				query := `SELECT COUNT(*) as count FROM orders WHERE status != 'cancelled'`
 				switch period {
 				case "today":
 					query += " AND DATE(created_at) = CURDATE()"
