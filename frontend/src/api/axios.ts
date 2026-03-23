@@ -47,19 +47,33 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Custom adapter to use Tauri's native bridge in production
   adapter: async (config) => {
-    const isTauri = typeof window !== 'undefined' && 
-      ((window as any).__TAURI_INTERNALS__ || 
-       typeof window.__TAURI__ !== 'undefined' ||
-       document.location.protocol === 'tauri:');
+    // Check if we're in Tauri environment using multiple detection methods
+    const isTauri = typeof window !== 'undefined' && (
+      typeof window.__TAURI__ !== 'undefined' ||
+      typeof window.__TAURI_INTERNALS__ !== 'undefined' ||
+      (typeof window !== 'undefined' && (window as any).TAURI?.http) ||
+      document.location.protocol === 'tauri:' ||
+      document.location.protocol === 'ipc:'
+    );
     
     if (!isTauri) {
       const defaultAdapter = axios.getAdapter(axios.defaults.adapter as any);
       return (defaultAdapter as any)(config);
     }
 
+    // Try to use @tauri-apps/plugin-http
     try {
+      let fetchFn = globalThis.fetch;
+      
+      // Try to import Tauri HTTP plugin
+      try {
+        const httpModule = await import('@tauri-apps/plugin-http');
+        fetchFn = httpModule.fetch;
+      } catch {
+        // Fall back to global fetch if plugin not available
+      }
+
       const fullUrl = config.url?.startsWith('http') 
         ? config.url 
         : `${config.baseURL}${config.url}${config.params ? '?' + new URLSearchParams(config.params).toString() : ''}`;
@@ -73,7 +87,12 @@ const api = axios.create({
         });
       }
 
-      const tauriResponse = await fetch(fullUrl, {
+      const tauriResponse = await fetchFn(fullUrl, {
+        method: (config.method?.toUpperCase() as any) || 'GET',
+        headers: plainHeaders,
+        body: config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : undefined,
+        connectTimeout: config.timeout || 10000,
+      });
         method: (config.method?.toUpperCase() as any) || 'GET',
         headers: plainHeaders,
         body: config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : undefined,
