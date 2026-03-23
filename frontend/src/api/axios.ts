@@ -93,11 +93,6 @@ const api = axios.create({
         body: config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : undefined,
         connectTimeout: config.timeout || 10000,
       });
-        method: (config.method?.toUpperCase() as any) || 'GET',
-        headers: plainHeaders,
-        body: config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : undefined,
-        connectTimeout: config.timeout || 10000,
-      });
 
       const responseText = await tauriResponse.text();
       
