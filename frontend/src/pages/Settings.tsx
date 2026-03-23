@@ -19,7 +19,7 @@ export default function Settings() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/settings');
+      const res = await api.get('/api/settings') as { data: { store_name?: string; contact_email?: string; service_advisors?: string | string[] } };
       if (res.data) {
         if (res.data.store_name) setStoreName(res.data.store_name);
         if (res.data.contact_email) setContactEmail(res.data.contact_email);

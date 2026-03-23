@@ -30,7 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await api.post('/api/auth/login', { email, password });
-    const { token: newToken, user: newUser } = response.data;
+    const data = response.data as any;
+    // Expect a shape: { token: string, user: object }
+    if (!data || !data.token || !data.user) {
+      const serverError = data?.error ?? 'Invalid login response';
+      throw new Error(typeof serverError === 'string' ? serverError : 'Login failed');
+    }
+    const { token: newToken, user: newUser } = data;
+    console.debug('Login success payload:', data);
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
     setToken(newToken);

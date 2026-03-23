@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"smsystem-backend/internal/database"
@@ -88,6 +89,8 @@ func (h *AnalyticsHandler) Query(c *gin.Context) {
 		branchID = branchIDValue.(uint)
 	}
 
+	log.Printf("Analytics Query received: role=%s branchID=%d", userRole, branchID)
+
 	if userRole == "super_admin" {
 		branchQuery := c.Query("branch_id")
 		if branchQuery == "ALL" {
@@ -101,6 +104,15 @@ func (h *AnalyticsHandler) Query(c *gin.Context) {
 	}
 
 	question := c.Query("q")
+	// Fallback to JSON body if GET 'q' param is not provided
+	if question == "" {
+		var payload struct {
+			Q string `json:"q"`
+		}
+		if err := c.ShouldBindJSON(&payload); err == nil {
+			question = payload.Q
+		}
+	}
 	if question == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Question is required"})
 		return

@@ -47,6 +47,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 
 	router.GET("/api/status", h.System.GetStatus)
 	router.GET("/api/analytics", h.Analytics.Query)
+	router.POST("/api/analytics", h.Analytics.Query)
 
 	auth := router.Group("/api/auth")
 	{

@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
-import api, { checkHealthNative } from '../api/axios';
+import { checkHealthNative, baseURL } from '../api/axios';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,11 +18,12 @@ export default function Login() {
     const checkBackend = async () => {
       try {
         const isOnline = await checkHealthNative();
+        console.log('Backend online:', isOnline);
         if (isOnline) {
           setBackendStatus('online');
         } else {
           setBackendStatus('offline');
-          setDebugError('Native bridge failed to connect');
+          setDebugError('Backend unreachable at ' + baseURL);
         }
       } catch (err) {
         console.error('Health check failed:', err);
@@ -36,12 +37,12 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    try {
+  try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { error?: string } } };
-      showToast(axiosError.response?.data?.error || 'Login failed. Please try again.', 'error');
+    } catch (err: any) {
+      const message = err?.message ?? 'Login failed. Please try again.';
+      showToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +60,7 @@ export default function Login() {
             {backendStatus === 'offline' && (
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest flex items-center gap-1">● Backend Offline</span>
-                <span className="text-[8px] text-gray-400 font-medium">Trying: {api.defaults.baseURL}</span>
+                <span className="text-[8px] text-gray-400 font-medium">Trying: {baseURL}</span>
                 {debugError && <span className="text-[7px] text-red-400/70 block max-w-[200px] break-all">Error: {debugError}</span>}
               </div>
             )}

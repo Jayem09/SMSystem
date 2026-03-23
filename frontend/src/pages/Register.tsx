@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
-import api, { checkHealthNative } from '../api/axios';
+import { checkHealthNative, baseURL } from '../api/axios';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -24,7 +24,7 @@ export default function Register() {
           setBackendStatus('online');
         } else {
           setBackendStatus('offline');
-          setDebugError('Native bridge failed to connect');
+          setDebugError('Backend unreachable at ' + baseURL);
         }
       } catch (err) {
         console.error('Initialization failed:', err);
@@ -72,7 +72,7 @@ export default function Register() {
             {backendStatus === 'offline' && (
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest flex items-center gap-1">● Backend Offline</span>
-                <span className="text-[8px] text-gray-400 font-medium">Trying: {api.defaults.baseURL}</span>
+                <span className="text-[8px] text-gray-400 font-medium">Trying: {baseURL}</span>
                 {debugError && <span className="text-[7px] text-red-400/70 block max-w-[200px] break-all text-center">Error: {debugError}</span>}
               </div>
             )}
