@@ -172,20 +172,17 @@ api.delete = wrapMethod(api.delete.bind(api));
 api.patch = wrapMethod(api.patch.bind(api));
 
 export const checkHealthNative = async (): Promise<boolean> => {
-  // In development, avoid using the Tauri plugin HTTP fetch to prevent plugin errors
-  const isDev = import.meta?.env?.DEV ?? false;
-  const healthUrl = isDev ? '/api/health' : `${baseURL}/api/health`;
   try {
+    const healthUrl = `${baseURL}/api/health`;
     console.log('Checking health at:', healthUrl);
-    // Use native window.fetch in dev to bypass tauri plugin issues
-    const devFetch = (typeof window !== 'undefined' && (window as any).fetch) ? (window as any).fetch.bind(window) : fetch;
-    const response = await devFetch(healthUrl, {
+    
+    const fetchToUse = getFetch();
+    const response = await fetchToUse(healthUrl, {
       method: 'GET',
-      // Use a short timeout-compatible approach if supported; fall back otherwise
-      // AbortSignal is not universally supported in all runtimes, keep simple for dev
     });
-    console.log('Health response:', response.status, response.ok);
-    return response.ok;
+    
+    console.log('Health response status:', response.status);
+    return response.ok || response.status === 200;
   } catch (err) {
     console.error('Health check error:', err);
     return false;
