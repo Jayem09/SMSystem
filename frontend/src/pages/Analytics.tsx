@@ -47,7 +47,9 @@ export default function Analytics() {
     setError('');
 
     try {
+      console.log("Sending analytics query:", q);
       const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}`);
+      console.log("Analytics response:", res);
       // Be defensive in case the backend shape changes slightly
       const answer = res?.data?.answer ?? '';
       const data = res?.data?.data ?? null;
@@ -58,8 +60,9 @@ export default function Analytics() {
           : h
       ));
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to fetch analytics');
+      console.error("Analytics error:", err);
+      const error = err as { response?: { data?: { error?: string } }, message?: string };
+      setError(error.response?.data?.error || error.message || 'Failed to fetch analytics');
       setHistory(prev => prev.filter(h => h.id !== questionId));
     } finally {
       setLoading(false);

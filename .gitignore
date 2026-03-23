@@ -66,3 +66,12 @@ tmp/
 # Logs
 logs/
 *.log
+
+
+# Node/npm (root level - should not be committed)
+node_modules/
+package-lock.json
+package.json
+
+# Sisyphus (planning artifacts)
+.sisyphus/
