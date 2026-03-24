@@ -1,10 +1,6 @@
 /**
- * Sales Invoice Receipt — prints TEXT ONLY onto pre-printed LETTER (19.5" x 13.5") invoice paper.
+ * Sales Invoice Receipt — prints TEXT ONLY onto pre-printed LETTER invoice paper.
  * All positions use absolute positioning (in inches) to align with form fields.
- * No borders or boxes are printed — those are already on the paper.
- *
- * PREVIEW MODE: Shows scanned form as background so you can visually align text.
- * The background is hidden when printing (@media print).
  */
 
 interface ReceiptOrderItem {
@@ -32,209 +28,133 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
   const date = new Date(order.created_at);
   const dateStr = date.toLocaleDateString('en-PH', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-  
   const customerName = order.customer?.name || order.guest_name || 'WALK-IN';
   const custAddress = (order.customer?.address || businessAddress || '').toUpperCase();
 
-  
   const totalAmount = order.total_amount || 0;
   const fmt = (n: number | undefined | null) => (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Build item rows using absolute positioning for columns
+  // Build item rows
   const MAX_ROWS = 10;
   const items = (order.items || []).slice(0, MAX_ROWS);
   const itemRows = items.map((item, index) => {
-  const unitPrice = item.unit_price ?? item.price ?? (item.subtotal / item.quantity);
-  const subtotal = item.subtotal ?? 0;
-  const unit = "PCS";
+    const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
+    const subtotal = item.subtotal ?? 0;
+    const unit = "PCS";
     
-    // Calculate the Y position for this row.
-    const baseTop = 2.70;
-    const rowHeight = 0.30;
+    const baseTop = 2.35; // slightly upwards
+    const rowHeight = 0.30; 
     const topPos = baseTop + (index * rowHeight);
 
     return `
-      <!-- Row ${index + 1} -->
-    <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:0.80in;">${item.quantity}</div>
-    <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:1.50in;">${unit}</div>
-    <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:2.20in;">${item.product?.name || ''}</div>
-    <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:5.60in;">${fmt(unitPrice)}</div>
-    <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:6.70in;">${fmt(subtotal)}</div>
+      <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">${item.quantity}</div>
+      <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-unit) + var(--offset-x));">${unit}</div>
+      <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-desc) + var(--offset-x));">${item.product?.name || ''}</div>
+      <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-price) - 0.13in + var(--offset-x));">${fmt(unitPrice)}</div>
+      <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-amt) - 0.10in + var(--offset-x));">${fmt(subtotal)}</div>
     `;
   }).join('');
 
-  const html = `
+  return `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Invoice Preview — Align &amp; Print</title>
+      <title>Invoice Preview</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page {
           size: 7.68in 5.31in;
           margin: 0;
         }
-        body {
+        
+        :root {
+          /* Column Horizontal Bases */
+          --col-qty: 0.60in;
+          --col-unit: 0.95in;
+          --col-desc: 1.70in;
+          --col-price: 5.50in; /* move unit price slightly left */
+          --col-amt: 6.30in;   /* move amount slightly left */
+
+          /* MASTER OFFSETS: Adjust these to shift EVERYTHING vertically */
+          --offset-x: -0.30in; 
+          --offset-y: -0.55in; /* moves name, address, date, items UP */
+        }
+
+        html, body {
           width: 7.68in;
           height: 5.31in;
-          transform-origin: top left;
           font-family: "Courier New", monospace;
           position: relative;
-          /* ★ PRINTER OFFSET — adjust this single value to shift ALL text up/down ★
-             Negative = move UP, Positive = move DOWN
-             Change this when switching printers */
-          --offset-x: 0in;
-          --offset-y: 0in;
+          background: transparent;
         }
 
-        /* ═══════════════════════════════════════════════
-           BACKGROUND TEMPLATE — visible on screen only
-           Hidden when printing on actual pre-printed paper
-           ═══════════════════════════════════════════════ */
-        .bg-template {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 7.68in;
-          height: 5.31in;
-          opacity: 0.25;
-          z-index: 0;
-        }
-        .bg-template img {
-          width: 100%;
-          height: 100%;
-          object-fit: fill;
-        }
-
-        /* Hide background + toolbar when actually printing */
         @media print {
           .toolbar { display: none !important; }
         }
 
-        
-        .date-field, .reg-name, .tin-field, .address,
-        .items-table, .vatable-sales, .vat-amount-left,
-        .zero-rated, .vat-exempt, .total-vat-incl,
-        .less-vat, .net-of-vat, .less-discount,
-        .add-vat, .less-withholding, .total-due {
-          z-index: 1;
-        }
-
-        
-
-        /* ---------- Customer Info Section ---------- */
+        /* Customer Info Section */
         .reg-name {
-          position:absolute;
-          top:calc(1.70in + var(--offset-y));
-          left:1.30in;
-          font-size:15px;
+          position: absolute;
+          top: calc(1.75in + var(--offset-y)); /* slightly up */
+          left: calc(1.60in + var(--offset-x));
+          font-size: 15px;
         }
 
-        .address{
-          position:absolute;
-          top:calc(2.00in + var(--offset-y));
-          left:1.30in;
-          font-size:15px;
-          width:4.5in;
+        .address {
+          position: absolute;
+          top: calc(1.95in + var(--offset-y)); /* slightly up */
+          left: calc(1.30in + var(--offset-x));
+          font-size: 15px;
+          width: 4.5in;
         }
 
-        .date-field{
-          position:absolute;
-          top:calc(2.00in + var(--offset-y));
-          left:6.10in;
-          font-size:15px;
+        .date-field {
+          position: absolute;
+          top: calc(1.95in + var(--offset-y)); /* slightly up */
+          left: calc(6.50in + var(--offset-x));
+          font-size: 15px;
         }
-        .tin-field   { position: absolute; top: calc(2.50in + var(--offset-y));  left: 1.05in;  font-size: 15px; }
-  
-        /* ---------- Items (Absolute Layout) ---------- */
+
+        /* Items Section */
         .col-qty, .col-unit, .col-desc, .col-price, .col-amt {
           position: absolute;
-          font-size: 15px;
-          height: 0.29in;
-          line-height: 0.29in;
+          font-size: 13px;
+          height: 0.30in;
+          line-height: 0.30in;
           white-space: nowrap;
-          overflow: hidden;
         }
         
-        .col-qty   { width: 0.4in; text-align: center; }
+        .col-qty   { width: 0.5in; text-align: center; }
         .col-unit  { width: 0.5in; text-align: center; }
-        .col-desc  { width: 3.5in; text-align: left; }
+        .col-desc  { width: 3.2in; text-align: left; }
         .col-price { width: 1.0in; text-align: right; }
         .col-amt   { width: 1.0in; text-align: right; }
 
-        /* ---------- Tax Summary (Bottom Left) ---------- */
-        .vatable-sales   { position: absolute; top: calc(7.10in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
-        .vat-amount-left { position: absolute; top: calc(7.35in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
-        .zero-rated      { position: absolute; top: calc(7.65in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
-        .vat-exempt      { position: absolute; top: calc(7.90in + var(--offset-y)); left: 2.40in; font-size: 15px; text-align: right; width: 1.2in; }
-
-        /* ---------- Tax Summary (Bottom Right) ---------- */
-        .total-vat-incl  { position: absolute; top: calc(7.10in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .less-vat        { position: absolute; top: calc(7.35in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .net-of-vat      { position: absolute; top: calc(7.65in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .less-discount   { position: absolute; top: calc(7.95in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .add-vat         { position: absolute; top: calc(8.20in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .less-withholding { position: absolute; top: calc(8.45in + var(--offset-y)); left: 6.20in; font-size: 15px; text-align: right; width: 1.5in; }
-        .total-due       { position: absolute; top: calc(8.80in + var(--offset-y)); left: 6.70in; font-size: 15px; text-align: right; width: 1.5in; font-weight: bold; }position:absolute; }
-        /* ---------- Toolbar ---------- */
-        .toolbar {
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          z-index: 9999;
-          display: flex;
-          gap: 8px;
-          background: #333;
-          padding: 8px 12px;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-        .toolbar button {
-          padding: 6px 14px;
-          font-size: 13px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
+        .total-due {
+          position: absolute;
+          top: calc(4.90in + var(--offset-y)); /* slightly up, the higher = downwards */
+          left: calc(6.90in + var(--offset-x)); /* push backwards slightly - higher the value = move backwards (right)*/
+          width: 1in;
+          font-size: 16px;
           font-weight: bold;
-        }
-        .btn-print {
-          background: #4CAF50;
-          color: white;
-        }
-        .btn-toggle {
-          background: #2196F3;
-          color: white;
-        }
-        .btn-close {
-          background: #f44336;
-          color: white;
+          text-align: right;
         }
       </style>
     </head>
     <body onload="window.print()">
-
-      <!-- Customer Info -->
       <div class="date-field">${dateStr}</div>
       <div class="reg-name">${customerName}</div>
       <div class="address">${custAddress}</div>
-
-      <!-- Items -->
       ${itemRows}
-
-      <!-- Total Amount Only -->
       <div class="total-due">${fmt(totalAmount)}</div>
-
     </body>
     </html>
   `;
-
-  return html;
 }
 
 export function printDeliveryReceipt(order: ReceiptOrder, tin?: string, businessAddress?: string, withholdingTaxRate?: number) {
   const html = generateDeliveryReceiptHTML(order, tin, businessAddress, withholdingTaxRate);
-
-  const printWindow = window.open('', '_blank', 'width=850,height=1100');
+  const printWindow = window.open('', '_blank', 'width=1100,height=650');
   if (printWindow) {
     printWindow.document.write(html);
     printWindow.document.close();
