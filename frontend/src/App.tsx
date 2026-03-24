@@ -74,9 +74,8 @@ function App() {
         backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', zIndex: 9999
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div className="mb-4" style={{ display: 'inline-flex', width: 40, height: 40,
-              borderRadius: '50%', border: '4px solid rgba(255,255,255,.3)', borderTopColor: 'white', animation: 'spin 1s linear infinite'}} />
-          <div style={{ marginTop: 12, fontSize: 16 }}>Connecting to backend...</div>
+           <div className="mb-4" style={{ display: 'inline-flex', width: 40, height: 40,
+               borderRadius: '50%', border: '4px solid rgba(255,255,255,.3)', borderTopColor: 'white', animation: 'spin 1s linear infinite'}} />
           {startupError && <div style={{ marginTop: 6, fontSize: 12 }}>{startupError}</div>}
           <button
             onClick={async () => {
