@@ -40,6 +40,7 @@ func isOriginAllowed(origin string) bool {
 
 func main() {
 	cfg := config.Load()
+	config.MustValidate(cfg)
 	log.Println("Configuration loaded")
 
 	database.Connect(cfg)
