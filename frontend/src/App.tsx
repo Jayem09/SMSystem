@@ -90,8 +90,9 @@ function App() {
     );
   }
 
-    <ErrorBoundary>
-      <BrowserRouter>
+    return (
+      <ErrorBoundary>
+        <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
             <MaintenanceGuard>
