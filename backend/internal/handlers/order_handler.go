@@ -406,23 +406,72 @@ func (h *OrderHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("order_id = ?", id).Delete(&models.OrderItem{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Delete(&models.Order{}, id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	if order.Status == "completed" {
+		err = database.DB.Transaction(func(tx *gorm.DB) error {
+			var items []models.OrderItem
+			if err := tx.Where("order_id = ?", id).Find(&items).Error; err != nil {
+				return err
+			}
+
+			userID, _ := GetUintFromContext(c, "userID")
+
+			for _, item := range items {
+				var product models.Product
+				if err := tx.First(&product, item.ProductID).Error; err != nil {
+					return errors.New("product not found: " + strconv.Itoa(int(item.ProductID)))
+				}
+
+				if !product.IsService {
+					if err := tx.Model(&product).Update("stock", gorm.Expr("stock + ?", item.Quantity)).Error; err != nil {
+						return fmt.Errorf("failed to restore stock for %s", product.Name)
+					}
+
+					movement := models.StockMovement{
+						ProductID:   product.ID,
+						WarehouseID: 1,
+						BranchID:    order.BranchID,
+						UserID:      &userID,
+						Type:        models.MovementTypeIn,
+						Quantity:    item.Quantity,
+						Reference:   fmt.Sprintf("Order #%d deleted - stock restored", order.ID),
+					}
+					if err := tx.Create(&movement).Error; err != nil {
+						return fmt.Errorf("failed to record stock movement: %v", err)
+					}
+				}
+			}
+
+			if err := tx.Where("order_id = ?", id).Delete(&models.OrderItem{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&order).Error; err != nil {
+				return err
+			}
+			return nil
+		})
+	} else {
+		err = database.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("order_id = ?", id).Delete(&models.OrderItem{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&order).Error; err != nil {
+				return err
+			}
+			return nil
+		})
+	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete order"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete order: " + err.Error()})
 		return
 	}
 
 	userID, _ := GetUintFromContext(c, "userID")
-	h.LogService.Record(userID, "DELETE", "Order", strconv.Itoa(int(id)), fmt.Sprintf("Deleted order #%d", id), c.ClientIP())
+	statusMsg := "no change"
+	if order.Status == "completed" {
+		statusMsg = "restored"
+	}
+	h.LogService.Record(userID, "DELETE", "Order", strconv.Itoa(int(id)), fmt.Sprintf("Deleted order #%d (stock %s)", id, statusMsg), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
 }
