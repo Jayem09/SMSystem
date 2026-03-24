@@ -21,7 +21,7 @@ const getFetch = () => {
   throw new Error('No fetch available');
 };
 
-export const baseURL = 'http://168.144.46.137:8080';
+export const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const fetchFn = getFetch();
 console.log('API Base URL:', baseURL);
@@ -172,21 +172,53 @@ api.delete = wrapMethod(api.delete.bind(api));
 api.patch = wrapMethod(api.patch.bind(api));
 
 export const checkHealthNative = async (): Promise<boolean> => {
+  const healthUrl = `${baseURL}/api/health`;
+  console.log('=== HEALTH CHECK START ===');
+  console.log('URL:', healthUrl);
+  
+  // Step 1: Try Tauri HTTP plugin
   try {
-    const healthUrl = `${baseURL}/api/health`;
-    console.log('Checking health at:', healthUrl);
-    
-    const fetchToUse = getFetch();
-    const response = await fetchToUse(healthUrl, {
+    console.log('Trying Tauri HTTP plugin...');
+    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+    const response = await tauriFetch(healthUrl, {
       method: 'GET',
     });
-    
-    console.log('Health response status:', response.status);
+    console.log('Tauri HTTP status:', response.status, 'ok:', response.ok);
+    if (response.ok || response.status === 200) {
+      return true;
+    }
+  } catch (err) {
+    console.error('Tauri HTTP error:', err);
+  }
+  
+  // Step 2: Try native fetch  
+  try {
+    console.log('Trying native fetch...');
+    const response = await fetch(healthUrl);
+    console.log('Native fetch status:', response.status, 'ok:', response.ok);
     return response.ok || response.status === 200;
   } catch (err) {
-    console.error('Health check error:', err);
-    return false;
+    console.error('Native fetch error:', err);
   }
+  
+  // Step 3: Try shell curl
+  try {
+    console.log('Trying shell curl...');
+    const { Command } = await import('@tauri-apps/plugin-shell');
+    const command = Command.create('curl', ['-s', '-o', '/dev/null', '-w', '%{http_code}', healthUrl]);
+    const output = await command.execute();
+    console.log('Shell curl result:', output);
+    if (output.code === 0) {
+      const status = parseInt(output.stdout.trim(), 10);
+      console.log('Shell curl status:', status);
+      return status >= 200 && status < 400;
+    }
+  } catch (err) {
+    console.error('Shell curl error:', err);
+  }
+  
+  console.log('=== ALL METHODS FAILED ===');
+  return false;
 };
 
 export const createAbortController = (): AbortController => {

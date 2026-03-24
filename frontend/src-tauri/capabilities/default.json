@@ -43,6 +43,7 @@
       ]
     },
     "core:webview:allow-print",
+    "shell:allow-execute",
     "updater:default"
   ]
 }
