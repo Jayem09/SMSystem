@@ -44,7 +44,7 @@ function App() {
           setBackendOnline(true);
           setBooting(false);
         } else {
-          setStartupError('Backend unreachable at ' + 'http://168.144.46.137:8080');
+          setStartupError('Backend unreachable');
           // Retry every 5 seconds until success
           retryInterval = setInterval(async () => {
             const ok2 = await checkHealthNative();

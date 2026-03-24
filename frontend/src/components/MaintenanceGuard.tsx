@@ -38,54 +38,44 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
             setIsUpdating(true);
             setUpdateProgress(0);
             
-            console.log("Starting update process...");
-            const { check } = await import('@tauri-apps/plugin-updater');
-            const { relaunch } = await import('@tauri-apps/plugin-process');
-            
-            const update = await check();
-            console.log("Update check result:", update);
+             const { check } = await import('@tauri-apps/plugin-updater');
+             const { relaunch } = await import('@tauri-apps/plugin-process');
+             
+             const update = await check();
 
-            if (update) {
-                console.log("Update available, downloading...");
-                let downloaded = 0;
-                let contentLength = 0;
-                
-                await update.downloadAndInstall((event) => {
-                    if (event.event === 'Started') {
-                        contentLength = event.data?.contentLength || 0;
-                        console.log("Download started, size:", contentLength);
-                    } else if (event.event === 'Progress') {
-                        downloaded += event.data?.chunkLength || 0;
-                        if (contentLength > 0) {
-                            setUpdateProgress(Math.round((downloaded / contentLength) * 100));
-                        }
-                    } else if (event.event === 'Finished') {
-                        setUpdateProgress(100);
-                        console.log("Download finished, installing...");
-                    }
-                });
-                
-                console.log("Installation complete, waiting 3 seconds then relaunching...");
-                
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                
-                try {
-                    console.log("Calling relaunch()...");
-                    await relaunch();
-                    console.log("Relaunch called successfully");
-                } catch (relaunchErr) {
-                    console.error("Relaunch failed, fallback to reload:", relaunchErr);
-                    window.location.reload();
-                }
-            } else {
-                console.log("No update available, restarting app...");
-                try {
-                    await relaunch();
-                } catch (relaunchErr) {
-                    console.error("Relaunch failed:", relaunchErr);
-                    window.location.reload();
-                }
-            }
+             if (update) {
+                 let downloaded = 0;
+                 let contentLength = 0;
+                 
+                 await update.downloadAndInstall((event) => {
+                     if (event.event === 'Started') {
+                         contentLength = event.data?.contentLength || 0;
+                     } else if (event.event === 'Progress') {
+                         downloaded += event.data?.chunkLength || 0;
+                         if (contentLength > 0) {
+                             setUpdateProgress(Math.round((downloaded / contentLength) * 100));
+                         }
+                     } else if (event.event === 'Finished') {
+                         setUpdateProgress(100);
+                     }
+                 });
+                 
+                 await new Promise(resolve => setTimeout(resolve, 3000));
+                 
+                 try {
+                     await relaunch();
+                 } catch (relaunchErr) {
+                     console.error("Relaunch failed, fallback to reload:", relaunchErr);
+                     window.location.reload();
+                 }
+             } else {
+                 try {
+                     await relaunch();
+                 } catch (relaunchErr) {
+                     console.error("Relaunch failed:", relaunchErr);
+                     window.location.reload();
+                 }
+             }
         } catch (e) {
             console.error("Update failed:", e);
             setTimeout(() => window.location.reload(), 2000);

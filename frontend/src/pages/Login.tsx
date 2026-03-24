@@ -20,22 +20,20 @@ export default function Login() {
     setBackendStatus('checking');
     setDebugError('');
     
-    try {
-      const isOnline = await checkHealthNative();
-      console.log('Backend online:', isOnline);
-      if (isOnline) {
-        setBackendStatus('online');
-      } else {
-        setBackendStatus('offline');
-        setDebugError('Backend unreachable at ' + baseURL);
-      }
-    } catch (err) {
-      console.error('Health check failed:', err);
-      setBackendStatus('offline');
-      setDebugError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsRetrying(false);
-    }
+     try {
+       const isOnline = await checkHealthNative();
+       if (isOnline) {
+         setBackendStatus('online');
+       } else {
+         setBackendStatus('offline');
+         setDebugError('Backend unreachable at ' + baseURL);
+       }
+     } catch (err) {
+       setBackendStatus('offline');
+       setDebugError(err instanceof Error ? err.message : String(err));
+     } finally {
+       setIsRetrying(false);
+     }
   };
 
   useEffect(() => {

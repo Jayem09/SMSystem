@@ -46,27 +46,24 @@ export default function Analytics() {
     setLoading(true);
     setError('');
 
-    try {
-      console.log("Sending analytics query:", q);
-      const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}`);
-      console.log("Analytics response:", res);
-      // Be defensive in case the backend shape changes slightly
-      const answer = res?.data?.answer ?? '';
-      const data = res?.data?.data ?? null;
-      const chartType = res?.data?.chart_type ?? '';
-      setHistory(prev => prev.map(h => 
-        h.id === questionId 
-          ? { ...h, answer, data, chartType }
-          : h
-      ));
-    } catch (err: unknown) {
-      console.error("Analytics error:", err);
-      const error = err as { response?: { data?: { error?: string } }, message?: string };
-      setError(error.response?.data?.error || error.message || 'Failed to fetch analytics');
-      setHistory(prev => prev.filter(h => h.id !== questionId));
-    } finally {
-      setLoading(false);
-    }
+     try {
+       const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}`);
+       // Be defensive in case the backend shape changes slightly
+       const answer = res?.data?.answer ?? '';
+       const data = res?.data?.data ?? null;
+       const chartType = res?.data?.chart_type ?? '';
+       setHistory(prev => prev.map(h => 
+         h.id === questionId 
+           ? { ...h, answer, data, chartType }
+           : h
+       ));
+     } catch (err: unknown) {
+       const error = err as { response?: { data?: { error?: string } }, message?: string };
+       setError(error.response?.data?.error || error.message || 'Failed to fetch analytics');
+       setHistory(prev => prev.filter(h => h.id !== questionId));
+     } finally {
+       setLoading(false);
+     }
   };
 
   const formatCurrency = (val: number) => {

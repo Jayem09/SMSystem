@@ -24,8 +24,6 @@ const getFetch = () => {
 export const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const fetchFn = getFetch();
-console.log('API Base URL:', baseURL);
-console.log('Fetch function:', typeof fetchFn);
 
 interface ApiResponse {
   data: unknown;
@@ -77,16 +75,12 @@ class TauriApi {
       Object.assign(headers, config.headers);
     }
 
-    console.log(`HTTP ${method} to:`, fullUrl);
-
-    const response = await fetchFn(fullUrl, {
-      method,
-      headers,
-      body: data ? JSON.stringify(data) : undefined,
-      connectTimeout: config?.timeout || 30000,
-    });
-
-    console.log('Response status:', response.status);
+     const response = await fetchFn(fullUrl, {
+       method,
+       headers,
+       body: data ? JSON.stringify(data) : undefined,
+       connectTimeout: config?.timeout || 30000,
+     });
 
     let responseData: unknown;
     const contentType = response.headers.get('content-type');
@@ -173,8 +167,6 @@ api.patch = wrapMethod(api.patch.bind(api));
 
 export const checkHealthNative = async (): Promise<boolean> => {
   const healthUrl = `${baseURL}/api/health`;
-  console.log('=== HEALTH CHECK START ===');
-  console.log('URL:', healthUrl);
 
   // Simple delay helper
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -184,58 +176,49 @@ export const checkHealthNative = async (): Promise<boolean> => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // Step 1: Try Tauri HTTP plugin
     try {
-      console.log('Attempt', attempt, "- Trying Tauri HTTP plugin...");
       const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
       const response = await tauriFetch(healthUrl, {
         method: 'GET',
       });
-      console.log('Tauri HTTP status:', response.status, 'ok:', response.ok);
       if (response.ok || response.status === 200) {
         return true;
       }
     } catch (err) {
-      console.error('Tauri HTTP error:', err);
+      // Silently continue to next method
     }
 
     // Step 2: Try native fetch
     try {
-      console.log('Attempt', attempt, '- Trying native fetch...');
       const response = await fetch(healthUrl);
-      console.log('Native fetch status:', response.status, 'ok:', response.ok);
       if (response.ok || response.status === 200) {
         return true;
       }
     } catch (err) {
-      console.error('Native fetch error:', err);
+      // Silently continue to next method
     }
 
     // Step 3: Try shell curl
     try {
-      console.log('Attempt', attempt, '- Trying shell curl...');
       const { Command } = await import('@tauri-apps/plugin-shell');
       const command = Command.create('curl', ['-s', '-o', '/dev/null', '-w', '%{http_code}', healthUrl]);
       const output = await command.execute();
-      console.log('Shell curl result:', output);
       if (output.code === 0) {
         const status = parseInt(output.stdout.trim(), 10);
-        console.log('Shell curl status:', status);
         if (status >= 200 && status < 400) {
           return true;
         }
       }
     } catch (err) {
-      console.error('Shell curl error:', err);
+      // Silently continue to next method
     }
 
     // Backoff before the next attempt (avoid hammering the server)
     if (attempt < maxAttempts) {
       const backoff = 500 * attempt; // 500ms, 1000ms, 1500ms
-      console.log(`Health check failed on attempt ${attempt}. Backing off ${backoff}ms...`);
       await delay(backoff);
     }
   }
 
-  console.log('=== ALL METHODS FAILED ===');
   return false;
 };
 
