@@ -76,14 +76,7 @@ function App() {
         <div style={{ textAlign: 'center' }}>
            <div className="mb-4" style={{ display: 'inline-flex', width: 40, height: 40,
                borderRadius: '50%', border: '4px solid rgba(255,255,255,.3)', borderTopColor: 'white', animation: 'spin 1s linear infinite'}} />
-          {startupError && <div style={{ marginTop: 6, fontSize: 12 }}>{startupError}</div>}
-          <button
-            onClick={async () => {
-              const ok = await checkHealthNative();
-              if (ok) { setBackendOnline(true); setBooting(false); }
-            }}
-            style={{ marginTop: 12, padding: '6px 12px', borderRadius: 6, border: '1px solid #fff', background: '#374151', color: '#fff' }}
-          >Retry</button>
+           {startupError && <div style={{ marginTop: 6, fontSize: 12 }}>{startupError}</div>}
         </div>
       </div>
     );
