@@ -30,91 +30,52 @@ import MaintenanceGuard from './components/MaintenanceGuard';
 import { checkHealthNative } from './api/axios';
 import { useState, useEffect } from 'react';
 function App() {
-  // Startup health check to auto-retry until backend is online
-  const [booting, setBooting] = useState(true);
-  const [backendOnline, setBackendOnline] = useState(false);
-  const [startupError, setStartupError] = useState<string>('');
+     return (
+       <ErrorBoundary>
+         <BrowserRouter>
+         <AuthProvider>
+         <ToastProvider>
+         <MaintenanceGuard>
+         <ToastContainer />
+         <Routes>
+         {}
+         <Route path="/login" element={<Login />} />
+         <Route path="/register" element={<Register />} />
 
-    useEffect(() => {
-    let retryInterval: any;
-    const bootstrap = async () => {
-      try {
-        const ok = await checkHealthNative();
-        if (ok) {
-          setBackendOnline(true);
-          setBooting(false);
-        } else {
-          // Retry every 5 seconds until success
-          retryInterval = setInterval(async () => {
-            const ok2 = await checkHealthNative();
-            if (ok2) {
-              clearInterval(retryInterval);
-              setBackendOnline(true);
-              setBooting(false);
-            }
-          }, 5000);
-        }
-      } catch (e) {
-        // Silently handle error - no error message displayed
-      }
-    };
-    bootstrap();
-    return () => {
-      if (retryInterval) clearInterval(retryInterval);
-    };
-  }, []);
+         {}
+         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+         {}
+         <Route path="/dashboard" element={<Dashboard />} />
+         <Route path="/analytics" element={<Analytics />} />
+         <Route path="/pos" element={<POS />} />
+         <Route path="/customers" element={<Customers />} />
+         <Route path="/orders" element={<Orders />} />
 
-   // Inline startup overlay while booting - removed to show nothing during connection attempts
-   if (booting || !backendOnline) {
-     return null;
-   }
+         {}
+         <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
+         <Route path="/products" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Products /></ProtectedRoute>} />
+         <Route path="/daily-report" element={<ProtectedRoute requiredRole="admin"><DailyReport /></ProtectedRoute>} />
+         <Route path="/categories" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Categories /></ProtectedRoute>} />
+         <Route path="/brands" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Brands /></ProtectedRoute>} />
+         <Route path="/inventory" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Inventory /></ProtectedRoute>} />
+         <Route path="/expenses" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Expenses /></ProtectedRoute>} />
+         <Route path="/suppliers" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Suppliers /></ProtectedRoute>} />
+         <Route path="/purchase-orders" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><PurchaseOrders /></ProtectedRoute>} />
+         <Route path="/logs" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
+         <Route path="/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
+         <Route path="/branches" element={<ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>} />
+         <Route path="/transfers" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser", "cashier", "user"]}><Transfers /></ProtectedRoute>} />
+         <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
+       </Route>
 
-    return (
-      <ErrorBoundary>
-        <BrowserRouter>
-        <AuthProvider>
-          <ToastProvider>
-            <MaintenanceGuard>
-              <ToastContainer />
-              <Routes>
-              {}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {}
-              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                {}
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/pos" element={<POS />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/orders" element={<Orders />} />
-
-                {}
-                <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
-                <Route path="/products" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Products /></ProtectedRoute>} />
-                <Route path="/daily-report" element={<ProtectedRoute requiredRole="admin"><DailyReport /></ProtectedRoute>} />
-                <Route path="/categories" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Categories /></ProtectedRoute>} />
-                <Route path="/brands" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Brands /></ProtectedRoute>} />
-                <Route path="/inventory" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Inventory /></ProtectedRoute>} />
-                <Route path="/expenses" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Expenses /></ProtectedRoute>} />
-                <Route path="/suppliers" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Suppliers /></ProtectedRoute>} />
-                <Route path="/purchase-orders" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><PurchaseOrders /></ProtectedRoute>} />
-                <Route path="/logs" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
-                <Route path="/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
-                <Route path="/branches" element={<ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>} />
-                <Route path="/transfers" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser", "cashier", "user"]}><Transfers /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
-              </Route>
-
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-            </MaintenanceGuard>
-          </ToastProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
-  );
-}
+       <Route path="*" element={<Navigate to="/dashboard" replace />} />
+     </Routes>
+     </MaintenanceGuard>
+     </ToastProvider>
+     </AuthProvider>
+   </BrowserRouter>
+   </ErrorBoundary>
+   );
+ }
 
 export default App;
