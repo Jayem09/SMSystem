@@ -9,13 +9,16 @@ pub struct ApiResponse {
 }
 
 #[tauri::command]
-async fn api_get(url: String) -> Result<ApiResponse, String> {
+async fn api_get(url: String, token: Option<String>) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
-    match client.get(&url)
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-    {
+    let mut request = client.get(&url)
+        .timeout(std::time::Duration::from_secs(30));
+    
+    if let Some(t) = token {
+        request = request.header("Authorization", format!("Bearer {}", t));
+    }
+    
+    match request.send().await {
         Ok(response) => {
             let status = response.status().as_u16();
             let status_text = response.status().canonical_reason().unwrap_or("").to_string();
@@ -27,15 +30,18 @@ async fn api_get(url: String) -> Result<ApiResponse, String> {
 }
 
 #[tauri::command]
-async fn api_post(url: String, body: String) -> Result<ApiResponse, String> {
+async fn api_post(url: String, body: String, token: Option<String>) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
-    match client.post(&url)
+    let mut request = client.post(&url)
         .header("Content-Type", "application/json")
         .body(body)
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-    {
+        .timeout(std::time::Duration::from_secs(30));
+    
+    if let Some(t) = token {
+        request = request.header("Authorization", format!("Bearer {}", t));
+    }
+    
+    match request.send().await {
         Ok(response) => {
             let status = response.status().as_u16();
             let status_text = response.status().canonical_reason().unwrap_or("").to_string();

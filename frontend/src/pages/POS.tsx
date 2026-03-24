@@ -225,7 +225,7 @@ export default function POS() {
     }
   };
 
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = (products || []).filter(p => {
     const matchesSearch = p.name?.toLowerCase()?.includes(search.toLowerCase()) || false;
     const matchesCategory = selectedCategory ? p.category_id === selectedCategory : true;
     return matchesSearch && matchesCategory;

@@ -88,7 +88,7 @@ export default function Dashboard() {
     try {
       setExporting(true);
       const res = await api.get('/api/orders');
-      const orders = res.data.orders;
+      const orders = res.data?.orders || [];
       
       if (!orders || orders.length === 0) {
         alert('No data to export.');
@@ -202,7 +202,7 @@ export default function Dashboard() {
         </div>
       </div>
       {}
-      {stats.low_stock_products?.length > 0 && (
+      {stats.low_stock_products && stats.low_stock_products?.length > 0 && (
         <div className="mb-8 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center shadow-sm">
           <div className="p-2 bg-orange-100 rounded-lg mr-4">
             <AlertCircle className="w-5 h-5 text-orange-600" />
@@ -210,7 +210,7 @@ export default function Dashboard() {
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-orange-900">Inventory Alert</h3>
             <p className="text-xs text-orange-700">
-              {stats.low_stock_products.length} products are running low on stock. Check the product catalog to restock.
+              {(stats?.low_stock_products?.length || 0)} products are running low on stock. Check the product catalog to restock.
             </p>
           </div>
           <div className="flex gap-2">

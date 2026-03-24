@@ -40,7 +40,9 @@ export default function Expenses() {
   const fetchExpenses = async () => {
     try {
       const res = await api.get('/api/expenses');
-      setExpenses(res.data);
+      // Handle both array and {expenses: []} response formats
+      const expensesData = res.data?.expenses ?? res.data;
+      setExpenses(Array.isArray(expensesData) ? expensesData : []);
     } catch {
       
     } finally {
@@ -109,7 +111,7 @@ export default function Expenses() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {expenses.map((exp) => (
+            {(expenses || []).map((exp) => (
               <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 text-gray-900">
                   <div className="font-medium">{exp.description}</div>

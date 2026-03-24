@@ -46,7 +46,13 @@ export default function CRM() {
     const fetchCRM = async () => {
       try {
         const res = await api.get('/api/customers/crm-stats');
-        setData(res.data);
+        setData(res.data || {
+          total_customers: 0,
+          top_spenders: [],
+          recent_buyers: [],
+          at_risk: [],
+          popular_categories: []
+        });
       } catch (err) {
         setError('Failed to load CRM data');
       } finally {
@@ -94,7 +100,7 @@ export default function CRM() {
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Profiled Clients</p>
-            <h3 className="text-3xl font-black text-gray-900">{data.total_customers.toLocaleString()}</h3>
+            <h3 className="text-3xl font-black text-gray-900">{(data?.total_customers || 0).toLocaleString()}</h3>
           </div>
           <div className="text-gray-400">
             <Users className="w-6 h-6" strokeWidth={1.5} />

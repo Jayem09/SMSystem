@@ -64,8 +64,11 @@ func (h *ProductHandler) List(c *gin.Context) {
 		SELECT p.id, p.name, p.description, p.price, p.cost_price, `+stockSubquery+` as branch_stock, 
 		p.size, p.parent_id, p.image_url, p.category_id, p.brand_id, p.reorder_level,
 		p.primary_supplier_id, p.is_service, p.pcd, p.offset_et, p.width, p.bore, p.finish,
-		p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.created_at, p.updated_at
+		p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.created_at, p.updated_at,
+		c.name as category_name, b.name as brand_name
 		FROM products p 
+		LEFT JOIN categories c ON p.category_id = c.id
+		LEFT JOIN brands b ON p.brand_id = b.id
 		WHERE p.deleted_at IS NULL 
 		ORDER BY p.created_at DESC`,
 		queryArgs...).
@@ -77,6 +80,24 @@ func (h *ProductHandler) List(c *gin.Context) {
 	}
 
 	for _, r := range results {
+		// Add category object
+		if catName, ok := r["category_name"].(string); ok && catName != "" {
+			r["category"] = map[string]interface{}{"name": catName}
+		} else {
+			r["category"] = nil
+		}
+
+		// Add brand object
+		if brandName, ok := r["brand_name"].(string); ok && brandName != "" {
+			r["brand"] = map[string]interface{}{"name": brandName}
+		} else {
+			r["brand"] = nil
+		}
+
+		// Clean up temporary fields
+		delete(r, "category_name")
+		delete(r, "brand_name")
+
 		if r["branch_stock"] == nil {
 			r["branch_stock"] = 0
 		} else {

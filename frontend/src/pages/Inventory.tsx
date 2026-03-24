@@ -127,8 +127,8 @@ export default function Inventory() {
   const fetchWarehouses = async () => {
     try {
       const res = await api.get('/api/inventory/warehouses');
-      setWarehouses(res.data.warehouses);
-      if (res.data.warehouses.length > 0) {
+      setWarehouses(res.data?.warehouses || []);
+      if ((res.data?.warehouses || []).length > 0) {
         setWarehouseId(res.data.warehouses[0].id.toString());
       }
     } catch (err) {

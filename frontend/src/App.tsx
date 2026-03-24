@@ -23,6 +23,7 @@ import SettingsPage from './pages/Settings';
 import DailyReport from './pages/DailyReport';
 import Branches from './pages/Branches';
 import Transfers from './pages/Transfers';
+import Products from './pages/Products';
 import Analytics from './pages/Analytics';
 import Customers from './pages/Customers';
 import MaintenanceGuard from './components/MaintenanceGuard';
@@ -52,6 +53,7 @@ function App() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
                   <Route path="/daily-report" element={<ProtectedRoute requiredRole="admin"><DailyReport /></ProtectedRoute>} />
+                  <Route path="/products" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Products /></ProtectedRoute>} />
                   <Route path="/categories" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Categories /></ProtectedRoute>} />
                   <Route path="/brands" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Brands /></ProtectedRoute>} />
                   <Route path="/inventory" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser"]}><Inventory /></ProtectedRoute>} />
@@ -61,7 +63,7 @@ function App() {
                   <Route path="/logs" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
                   <Route path="/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
                   <Route path="/branches" element={<ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>} />
-                  <Route path="/transfers" element={<ProtectedRoute requiredRoute={["admin", "purchasing", "purchaser", "cashier", "user"]}><Transfers /></ProtectedRoute>} />
+                  <Route path="/transfers" element={<ProtectedRoute requiredRole={["admin", "purchasing", "purchaser", "cashier", "user"]}><Transfers /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
                 </Route>
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

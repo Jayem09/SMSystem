@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 
-const API_BASE = 'http://168.144.46.137:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://168.144.46.137:8080';
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 interface ApiResponse {
   data: unknown;
@@ -35,6 +37,44 @@ class TauriApi {
     return localStorage.getItem('token');
   }
 
+  private async fetchRequest(
+    method: string,
+    url: string,
+    data?: unknown
+  ): Promise<ApiResponse> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const options: RequestInit = {
+      method,
+      headers,
+    };
+
+    if (data && method !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(url, options);
+    let responseData: unknown;
+    try {
+      responseData = await response.json();
+    } catch {
+      responseData = null;
+    }
+
+    return {
+      data: responseData,
+      status: response.status,
+      statusText: response.statusText,
+      headers: {},
+    };
+  }
+
   private async request(
     method: string,
     url: string,
@@ -43,30 +83,35 @@ class TauriApi {
   ): Promise<ApiResponse> {
     const fullUrl = this.getFullUrl(url, config);
     
-    // Use Tauri command for API calls
+    // Try Tauri invoke first, fall back to fetch
+    const token = this.getToken();
     try {
-      if (method === 'GET') {
-        const result = await invoke<{data: unknown; status: number; status_text: string}>('api_get', { url: fullUrl });
-        return {
-          data: result.data,
-          status: result.status,
-          statusText: result.status_text,
-          headers: {},
-        };
-      } else {
-        const body = data ? JSON.stringify(data) : '{}';
-        const result = await invoke<{data: unknown; status: number; status_text: string}>('api_post', { url: fullUrl, body });
-        return {
-          data: result.data,
-          status: result.status,
-          statusText: result.status_text,
-          headers: {},
-        };
+      if (isTauri && typeof invoke !== 'undefined') {
+        if (method === 'GET') {
+          const result = await invoke<{data: unknown; status: number; status_text: string}>('api_get', { url: fullUrl, token });
+          return {
+            data: result.data,
+            status: result.status,
+            statusText: result.status_text,
+            headers: {},
+          };
+        } else {
+          const body = data ? JSON.stringify(data) : '{}';
+          const result = await invoke<{data: unknown; status: number; status_text: string}>('api_post', { url: fullUrl, body, token });
+          return {
+            data: result.data,
+            status: result.status,
+            statusText: result.status_text,
+            headers: {},
+          };
+        }
       }
     } catch (err) {
-      console.error('[API] Tauri invoke error:', err);
-      throw err;
+      console.warn('[API] Tauri invoke not available, using fetch:', err);
     }
+
+    // Fallback to fetch for browser dev mode
+    return this.fetchRequest(method, fullUrl, data);
   }
 
   get(url: string, config?: ApiConfig): Promise<ApiResponse> {

@@ -59,7 +59,7 @@ export default function Layout() {
   };
 
 
-  const currentRole = user?.role || 'user';
+  const currentRole = user?.role || 'guest';
 
   if (user?.role === 'pending') {
     return (

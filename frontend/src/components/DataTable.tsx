@@ -79,6 +79,7 @@ export default function DataTable<T extends { id: number | string }>({
   };
 
   const sortedData = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
     if (!sortKey || !sortDirection) return data;
 
     return [...data].sort((a, b) => {
@@ -131,7 +132,7 @@ export default function DataTable<T extends { id: number | string }>({
             </svg>
           </div>
         )}
-        {data.length > 0 && (
+        {data && data.length > 0 && (
           <span className="text-sm text-gray-500">
             {sortedData.length} {sortedData.length === 1 ? 'record' : 'records'}
           </span>
