@@ -106,7 +106,7 @@ export default function Register() {
 
             <button
               type="submit"
-              disabled={isSubmitting || backendStatus !== 'online'}
+              disabled={isSubmitting}
               className="w-full py-2 px-4 rounded-md text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? 'CREATING...' : 'CREATE ACCOUNT'}
