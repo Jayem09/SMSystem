@@ -33,13 +33,13 @@
       "endpoints": [
         "https://github.com/Jayem09/SMSystem/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhFQkU2QjQ5NjcxQkE0NTcKUldSWHBCdG5TV3UranJ5S0lqYlJ2QWYybzU0aldCb2lZS2hRNFBKTkMxdVY5UG9lZ1liLy9zTDkK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRERDQyQjM1NjAxODgzRDQKUldUVWd4aGdOU3ZVVGUxRzJSZzFsUmpDdXRQNUYwdGJjZDlQRklGelVkQjROLzRSU2FQK3Jqbm8K"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

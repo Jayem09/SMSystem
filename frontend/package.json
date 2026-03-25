@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:build": "export TAURI_SIGNING_PRIVATE_KEY=\"$(cat ~/.tauri/smsystem.key)\" && export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=\"\" && tauri build"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.94.5",
