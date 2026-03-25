@@ -168,6 +168,8 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 	}
 	crQuery.Scan(&categoryRevenue)
 
+	fmt.Printf("[DEBUG] Category revenue count: %d\n", len(categoryRevenue))
+
 	// Calculate revenue percentages for pie chart (by category)
 	var totalCategoryRevenue float64
 	for _, c := range categoryRevenue {
@@ -204,6 +206,8 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		prQuery = prQuery.Where("orders.created_at >= ?", dateFilter)
 	}
 	prQuery.Scan(&productRevenue)
+
+	fmt.Printf("[DEBUG] Product revenue count: %d\n", len(productRevenue))
 
 	var currentSales, prevSales float64
 	var currentExpenses, prevExpenses float64
