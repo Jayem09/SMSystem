@@ -121,8 +121,11 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
           <input
             type="text"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Enter card UID or scan"
+            onChange={(e) => {
+              // Allow any input - numbers, letters, any characters
+              onChange(e.target.value);
+            }}
+            placeholder="Enter card UID manually"
             disabled={disabled}
             className="w-full px-4 py-3 pr-24 border border-gray-100 rounded-2xl text-sm text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-900 transition-all bg-gray-50/50 hover:bg-white placeholder:text-gray-400 pl-11"
           />
