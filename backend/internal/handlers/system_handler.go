@@ -184,24 +184,8 @@ func getUptime() string {
 }
 
 func getCPUUsage() float64 {
-	// Use mpstat if available, fallback to top
-	cmd := exec.Command("sh", "-c", "top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | sed 's/us,//'")
-	out, err := cmd.CombinedOutput()
-	if err == nil && len(out) > 0 {
-		trimmed := strings.TrimSpace(string(out))
-		// Parse user CPU, try to get total usage
-		usage, err := strconv.ParseFloat(trimmed, 64)
-		if err == nil && usage < 100 {
-			// user + system is roughly the usage
-			return usage * 2 // Approximate: user + sys (both around 9.1 each)
-		}
-	}
-	return 0
-}
-
-func getMemoryUsage() float64 {
-	// free output: Mem: total used free shared buff/cache available
-	cmd := exec.Command("sh", "-c", "free -b | grep Mem | awk '{print ($3/$2) * 100}'")
+	// Get idle from field 8: %Cpu(s):  x us,  x sy,  x ni, 81.8 id, ...
+	cmd := exec.Command("sh", "-c", "top -bn1 | grep 'Cpu(s)' | awk '{print 100 - $8}'")
 	out, err := cmd.CombinedOutput()
 	if err == nil && len(out) > 0 {
 		trimmed := strings.TrimSpace(string(out))
@@ -210,12 +194,19 @@ func getMemoryUsage() float64 {
 			return usage
 		}
 	}
-	// Fallback: use /proc/meminfo
-	cmd = exec.Command("sh", "-c", "cat /proc/meminfo | awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{print (t-a)/t*100}'")
-	out, _ = cmd.CombinedOutput()
-	if len(out) > 0 {
-		usage, _ := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
-		return usage
+	return 0
+}
+
+func getMemoryUsage() float64 {
+	// free -b: total used free shared buff/cache available
+	cmd := exec.Command("sh", "-c", "free -b | grep Mem | awk '{print ($3/$2) * 100}'")
+	out, err := cmd.CombinedOutput()
+	if err == nil && len(out) > 0 {
+		trimmed := strings.TrimSpace(string(out))
+		usage, err := strconv.ParseFloat(trimmed, 64)
+		if err == nil {
+			return usage
+		}
 	}
 	return 0
 }
