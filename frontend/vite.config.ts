@@ -6,10 +6,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080', // your backend
+        target: 'http://168.144.46.137:8080', // your backend
         changeOrigin: true,
         secure: false,
       },
     },
   },
+  appBase: '/',
 });

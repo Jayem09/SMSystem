@@ -277,7 +277,7 @@ func getOrdersTotal() int {
 func getLastBackup() string {
 	var backup models.Backup
 	result := database.DB.Order("created_at DESC").First(&backup)
-	if result.Error != nil {
+	if result.Error != nil || backup.ID == 0 {
 		return "Never"
 	}
 	return backup.CreatedAt.Format("2006-01-02 15:04")
