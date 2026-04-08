@@ -59,6 +59,29 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
     setBuffer('');
   };
 
+  // Handle manual input - require Enter or minimum 8 chars to confirm
+  const handleManualInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const input = e.currentTarget.value.trim();
+      if (input.length >= 8) {
+        onChange(input);
+      }
+    }
+  };
+
+  const handleManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // Only trigger onChange when Enter is pressed or min 8 chars
+    // For now, just let user type freely but only apply on Enter
+    if (val.length >= 8) {
+      // Auto-apply when reaches 8 chars (optional, can remove)
+      // onChange(val);
+    }
+  };
+
+  // Show card linked only when confirmed (Enter pressed or scanned)
+  const isCardLinked = value && value.length >= 8;
+
   return (
     <div className="mb-4">
       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
@@ -92,7 +115,7 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
             </div>
           </div>
         </div>
-      ) : value ? (
+      ) : isCardLinked ? (
         <div className="relative">
           <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl p-4">
             <div className="flex items-center justify-between">
@@ -121,11 +144,9 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
           <input
             type="text"
             value={value}
-            onChange={(e) => {
-              // Allow any input - numbers, letters, any characters
-              onChange(e.target.value);
-            }}
-            placeholder="Enter card UID manually"
+            onChange={handleManualChange}
+            onKeyDown={handleManualInput}
+            placeholder="Enter card UID manually (8+ chars)"
             disabled={disabled}
             className="w-full px-4 py-3 pr-24 border border-gray-100 rounded-2xl text-sm text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-900 transition-all bg-gray-50/50 hover:bg-white placeholder:text-gray-400 pl-11"
           />
