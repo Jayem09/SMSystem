@@ -101,7 +101,7 @@ export default function Customers() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    const payload = { name, email, phone, address, rfidCardId };
+    const payload = { name, email, phone, address, rfid_card_id: rfidCardId };
     try {
       if (editing) {
         await api.put(`/api/customers/${editing.id}`, payload);
