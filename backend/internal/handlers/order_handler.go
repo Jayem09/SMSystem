@@ -52,7 +52,8 @@ type checkoutInput struct {
 	TIN                string  `json:"tin"`
 	BusinessAddress    string  `json:"business_address"`
 	WithholdingTaxRate float64 `json:"withholding_tax_rate"`
-	RedeemPoints       float64 `json:"redeem_points"` // Points to redeem (1 point = ₱2 discount)
+	RewardID           *uint   `json:"reward_id"`     // Product ID being redeemed as reward
+	RewardPoints       int     `json:"reward_points"` // Points used for reward redemption
 }
 
 func (h *OrderHandler) List(c *gin.Context) {
@@ -265,32 +266,50 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		}
 
 		// === LOYALTY POINTS SYSTEM ===
-		// Handle points redemption (discount) if customer provided
-		if input.CustomerID != nil && *input.CustomerID > 0 && input.RedeemPoints > 0 {
+		// Handle reward redemption if customer provided a reward
+		if input.CustomerID != nil && *input.CustomerID > 0 && input.RewardID != nil && *input.RewardID > 0 && input.RewardPoints > 0 {
 			var customer models.Customer
 			if err := tx.First(&customer, *input.CustomerID).Error; err != nil {
 				return fmt.Errorf("customer not found: %v", err)
 			}
 
-			if customer.LoyaltyPoints < input.RedeemPoints {
-				return fmt.Errorf("insufficient loyalty points: have %.2f, need %.2f", customer.LoyaltyPoints, input.RedeemPoints)
+			if customer.LoyaltyPoints < float64(input.RewardPoints) {
+				return fmt.Errorf("insufficient loyalty points: have %.2f, need %d", customer.LoyaltyPoints, input.RewardPoints)
 			}
 
-			// Deduct points from customer (1 point = ₱2 discount)
-			if err := tx.Model(&customer).Update("loyalty_points", customer.LoyaltyPoints-input.RedeemPoints).Error; err != nil {
+			// Get the reward product
+			var rewardProduct models.Product
+			if err := tx.First(&rewardProduct, *input.RewardID).Error; err != nil {
+				return fmt.Errorf("reward product not found: %v", err)
+			}
+
+			if !rewardProduct.IsReward || rewardProduct.PointsRequired != input.RewardPoints {
+				return fmt.Errorf("invalid reward product or points mismatch")
+			}
+
+			// Deduct points from customer
+			if err := tx.Model(&customer).Update("loyalty_points", customer.LoyaltyPoints-float64(input.RewardPoints)).Error; err != nil {
 				return fmt.Errorf("failed to deduct loyalty points: %v", err)
 			}
 
-			// Apply discount to order (1 point = ₱2 discount)
-			order.DiscountAmount = order.DiscountAmount + (input.RedeemPoints * 2.0)
-			order.TotalAmount = order.TotalAmount - (input.RedeemPoints * 2.0)
+			// Add reward item to order as FREE (price already 0, so no double discount)
+			rewardItem := models.OrderItem{
+				OrderID:   order.ID,
+				ProductID: rewardProduct.ID,
+				Quantity:  1,
+				UnitPrice: 0, // Free because points were redeemed
+				Subtotal:  0,
+			}
+			if err := tx.Create(&rewardItem).Error; err != nil {
+				return fmt.Errorf("failed to add reward item to order: %v", err)
+			}
 
 			// Create loyalty ledger entry for redemption
 			ledgerEntry := models.LoyaltyLedger{
 				CustomerID:     *input.CustomerID,
 				OrderID:        &order.ID,
-				PointsRedeemed: input.RedeemPoints,
-				Remarks:        fmt.Sprintf("Redeemed %v points for ₱%.2f discount on Order #%d", input.RedeemPoints, input.RedeemPoints*2.0, order.ID),
+				PointsRedeemed: float64(input.RewardPoints),
+				Remarks:        fmt.Sprintf("Redeemed %d points for free reward: %s (Order #%d)", input.RewardPoints, rewardProduct.Name, order.ID),
 			}
 			if err := tx.Create(&ledgerEntry).Error; err != nil {
 				fmt.Printf("Warning: failed to create loyalty ledger entry: %v\n", err)

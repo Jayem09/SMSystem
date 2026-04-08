@@ -18,10 +18,19 @@ interface ReceiptOrder {
   discount_amount: number;
   payment_method: string;
   created_at: string;
+  customer?: { name: string; address?: string };
   guest_name?: string;
-  guest_phone?: string;
-  customer?: { name: string; phone?: string; address?: string };
   items?: ReceiptOrderItem[];
+}
+
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, businessAddress?: string, _withholdingTaxRate?: number): string {
@@ -38,24 +47,74 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
 
   // Build item rows
   const MAX_ROWS = 10;
-  const items = (order.items || []).slice(0, MAX_ROWS);
-  const itemRows = items.map((item, index) => {
+  const items = order.items || [];
+  
+  // Separate regular items and rewards
+  const regularItems = items.filter(item => {
     const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
     const subtotal = item.subtotal ?? 0;
-    const unit = "PCS";
-    
-    const baseTop = 2.35; // slightly upwards
+    return !(unitPrice === 0 && subtotal === 0);
+  });
+  
+  const rewardItems = items.filter(item => {
+    const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
+    const subtotal = item.subtotal ?? 0;
+    return unitPrice === 0 && subtotal === 0;
+  });
+  
+  const discountAmount = order.discount_amount ?? 0;
+  const unit = "PCS";
+  
+  // Build rows: regular items first, then rewards, then discount
+  let rowIndex = 0;
+  let itemRows = '';
+  
+  // Regular items
+  regularItems.slice(0, MAX_ROWS).forEach((item) => {
+    const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
+    const subtotal = item.subtotal ?? 0;
+    const baseTop = 2.35;
     const rowHeight = 0.30; 
-    const topPos = baseTop + (index * rowHeight);
-
-    return `
+    const topPos = baseTop + (rowIndex * rowHeight);
+    itemRows += `
       <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">${item.quantity}</div>
       <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-unit) + var(--offset-x));">${unit}</div>
-      <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-desc) + var(--offset-x));">${item.product?.name || ''}</div>
+      <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-desc) + var(--offset-x));">${escapeHtml(item.product?.name || '')}</div>
       <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-price) - 0.13in + var(--offset-x));">${fmt(unitPrice)}</div>
       <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-amt) - 0.10in + var(--offset-x));">${fmt(subtotal)}</div>
     `;
-  }).join('');
+    rowIndex++;
+  });
+  
+  // Reward items
+  rewardItems.slice(0, MAX_ROWS - rowIndex).forEach((item) => {
+    const itemName = `${item.product?.name || ''} (REWARD)`;
+    const baseTop = 2.35;
+    const rowHeight = 0.30; 
+    const topPos = baseTop + (rowIndex * rowHeight);
+    itemRows += `
+      <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">${item.quantity}</div>
+      <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-unit) + var(--offset-x));">${unit}</div>
+      <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-desc) + var(--offset-x));">${escapeHtml(itemName)}</div>
+      <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-price) - 0.13in + var(--offset-x));">FREE</div>
+      <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-amt) - 0.10in + var(--offset-x));">FREE</div>
+    `;
+    rowIndex++;
+  });
+  
+  // Discount at the end
+  if (discountAmount > 0 && rowIndex < MAX_ROWS) {
+    const baseTop = 2.35;
+    const rowHeight = 0.30; 
+    const topPos = baseTop + (rowIndex * rowHeight);
+    itemRows += `
+      <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">-</div>
+      <div class="col-unit"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-unit) + var(--offset-x));">-</div>
+      <div class="col-desc"  style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-desc) + var(--offset-x));">DISCOUNT</div>
+      <div class="col-price" style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-price) - 0.13in + var(--offset-x));">-${fmt(discountAmount)}</div>
+      <div class="col-amt"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-amt) - 0.10in + var(--offset-x));">-${fmt(discountAmount)}</div>
+    `;
+  }
 
   return `
     <!DOCTYPE html>

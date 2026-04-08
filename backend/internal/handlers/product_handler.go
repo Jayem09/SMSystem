@@ -44,7 +44,9 @@ type productInput struct {
 	DOTCode     string `json:"dot_code"`
 	PlyRating   string `json:"ply_rating"`
 
-	IsService bool `json:"is_service"`
+	IsService      bool `json:"is_service"`
+	PointsRequired int  `json:"points_required"`
+	IsReward       bool `json:"is_reward"`
 }
 
 func (h *ProductHandler) List(c *gin.Context) {
@@ -64,7 +66,8 @@ func (h *ProductHandler) List(c *gin.Context) {
 		SELECT p.id, p.name, p.description, p.price, p.cost_price, `+stockSubquery+` as branch_stock, 
 		p.size, p.parent_id, p.image_url, p.category_id, p.brand_id, p.reorder_level,
 		p.primary_supplier_id, p.is_service, p.pcd, p.offset_et, p.width, p.bore, p.finish,
-		p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.created_at, p.updated_at,
+		p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.points_required, p.is_reward,
+		p.created_at, p.updated_at,
 		c.name as category_name, b.name as brand_name
 		FROM products p 
 		LEFT JOIN categories c ON p.category_id = c.id
@@ -179,26 +182,28 @@ func (h *ProductHandler) Create(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Name:        input.Name,
-		Description: input.Description,
-		Price:       input.Price,
-		CostPrice:   input.CostPrice,
-		Stock:       input.Stock,
-		Size:        input.Size,
-		ParentID:    input.ParentID,
-		ImageURL:    input.ImageURL,
-		CategoryID:  input.CategoryID,
-		BrandID:     input.BrandID,
-		PCD:         input.PCD,
-		OffsetET:    input.OffsetET,
-		Width:       input.Width,
-		Bore:        input.Bore,
-		Finish:      input.Finish,
-		SpeedRating: input.SpeedRating,
-		LoadIndex:   input.LoadIndex,
-		DOTCode:     input.DOTCode,
-		PlyRating:   input.PlyRating,
-		IsService:   input.IsService,
+		Name:           input.Name,
+		Description:    input.Description,
+		Price:          input.Price,
+		CostPrice:      input.CostPrice,
+		Stock:          input.Stock,
+		Size:           input.Size,
+		ParentID:       input.ParentID,
+		ImageURL:       input.ImageURL,
+		CategoryID:     input.CategoryID,
+		BrandID:        input.BrandID,
+		PCD:            input.PCD,
+		OffsetET:       input.OffsetET,
+		Width:          input.Width,
+		Bore:           input.Bore,
+		Finish:         input.Finish,
+		SpeedRating:    input.SpeedRating,
+		LoadIndex:      input.LoadIndex,
+		DOTCode:        input.DOTCode,
+		PlyRating:      input.PlyRating,
+		IsService:      input.IsService,
+		PointsRequired: input.PointsRequired,
+		IsReward:       input.IsReward,
 	}
 
 	bID, _ := GetUintFromContext(c, "branchID")
@@ -307,6 +312,8 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	product.PlyRating = input.PlyRating
 	product.IsService = input.IsService
 	product.Stock = input.Stock
+	product.PointsRequired = input.PointsRequired
+	product.IsReward = input.IsReward
 
 	bID, _ := GetUintFromContext(c, "branchID")
 	userID, _ := GetUintFromContext(c, "userID")

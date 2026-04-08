@@ -3,7 +3,7 @@ import api from '../api/axios';
 import Modal from '../components/Modal';
 import { printReceipt } from '../components/Receipt';
 import { printDeliveryReceipt } from '../components/DeliveryReceipt';
-import { 
+import {
   Search, ShoppingCart, Trash2, Printer, CheckCircle, Package
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
@@ -18,6 +18,8 @@ interface Product {
   image_url?: string;
   category_id: number;
   category?: { name: string };
+  points_required?: number;
+  is_reward?: boolean;
 }
 
 interface CartItem extends Product {
@@ -71,8 +73,8 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  
+
+
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [serviceAdvisorName, setServiceAdvisorName] = useState('');
@@ -82,7 +84,7 @@ export default function POS() {
   const [businessAddress, setBusinessAddress] = useState('');
   const [withholdingTaxRate, setWithholdingTaxRate] = useState('0');
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [receiptType, setReceiptType] = useState<'SI' | 'DR'>('SI'); 
+  const [receiptType, setReceiptType] = useState<'SI' | 'DR'>('SI');
   const [discount, setDiscount] = useState('0');
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -91,13 +93,13 @@ export default function POS() {
   const [lastWithholdingTaxRate, setLastWithholdingTaxRate] = useState(0);
   const [lastReceiptType, setLastReceiptType] = useState<'SI' | 'DR'>('SI');
   const [isProcessingTerminal, setIsProcessingTerminal] = useState(false);
-  
+
   // RFID & Loyalty State
   const [isRfidScanning, setIsRfidScanning] = useState(false);
   const [rfidBuffer, setRfidBuffer] = useState('');
   const [rfidError, setRfidError] = useState(false);
   const [rfidCustomer, setRfidCustomer] = useState<Customer | null>(null);
-  const [redeemPoints, setRedeemPoints] = useState('0');
+  const [selectedReward, setSelectedReward] = useState<Product | null>(null);
 
   const { showToast } = useToast();
 
@@ -111,12 +113,12 @@ export default function POS() {
         api.get('/api/customers'),
         api.get('/api/settings'),
       ]);
-setProducts((pRes.data as { products?: Product[] }).products || []);
+      setProducts((pRes.data as { products?: Product[] }).products || []);
       setCategories((cRes.data as { categories?: { id: number; name: string }[] }).categories || []);
       setCustomers((custRes.data as { customers?: Customer[] }).customers || []);
-     } catch {
-       console.error('POS data fetch failed');
-       setError('Failed to sync with inventory system. Please check your connection.');
+    } catch {
+      console.error('POS data fetch failed');
+      setError('Failed to sync with inventory system. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -176,7 +178,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
     setRfidCustomer(null);
     setCustomerId('');
     setRfidBuffer('');
-    setRedeemPoints('0');
+    setSelectedReward(null);
     setRfidError(false);
   };
 
@@ -186,7 +188,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
 
   const addToCart = (product: Product) => {
     if (!product.is_service && product.branch_stock <= 0) return;
-    
+
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -217,8 +219,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
   };
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const pointsDiscountPesos = parseFloat(redeemPoints || '0') * 2;
-  const finalTotal = Math.max(0, subtotal - parseFloat(discount || '0') - pointsDiscountPesos);
+  const finalTotal = Math.max(0, subtotal - parseFloat(discount || '0'));
   const earnedPoints = Math.floor(subtotal / 200);
 
   const handleCheckout = async (status: 'pending' | 'completed' = 'completed') => {
@@ -243,7 +244,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
             setIsProcessingTerminal(false);
             return;
           }
-          
+
         } catch (termErr: unknown) {
           const err = termErr instanceof Error ? termErr.message : 'Unknown error';
           showToast(`Failed to communicate with terminal: ${err}`, 'error');
@@ -265,13 +266,14 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
         tin: tin,
         business_address: businessAddress,
         withholding_tax_rate: parseFloat(withholdingTaxRate) || 0,
-        redeem_points: parseFloat(redeemPoints) || 0,
+        reward_id: selectedReward?.id || null,
+        reward_points: selectedReward?.points_required || 0,
         items: cart.map(item => ({
           product_id: item.id,
           quantity: item.quantity
         }))
       };
-      
+
       const res = await api.post('/api/orders', payload);
       const orderResData = res.data as { order: Order };
       setLastOrder(orderResData.order);
@@ -279,11 +281,11 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
       setLastBusinessAddress(businessAddress);
       setLastWithholdingTaxRate(parseFloat(withholdingTaxRate) || 0);
       setLastReceiptType(receiptType);
-      
+
       setCart([]);
       setCheckoutModalOpen(false);
       setSuccessModalOpen(true);
-      
+
       setCustomerId('');
       setGuestName('');
       setGuestPhone('');
@@ -294,8 +296,9 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
       setPaymentMethod('cash');
       setReceiptType('SI');
       setDiscount('0');
-      
-      fetchData(); 
+      setSelectedReward(null);
+
+      fetchData();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string, details?: string } } };
       const errorMessage = axiosError.response?.data?.error || 'Checkout failed';
@@ -312,7 +315,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {}
+      { }
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center gap-4">
@@ -329,11 +332,10 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
             <div className="flex gap-2 overflow-x-auto pb-1 max-w-[50%] no-scrollbar">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  selectedCategory === null 
-                  ? 'bg-gray-900 text-white shadow-lg shadow-gray-200' 
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === null
+                  ? 'bg-gray-900 text-white shadow-lg shadow-gray-200'
                   : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                }`}
+                  }`}
               >
                 ALL
               </button>
@@ -341,11 +343,10 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    selectedCategory === cat.id 
-                    ? 'bg-gray-900 text-white shadow-lg shadow-gray-200' 
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat.id
+                    ? 'bg-gray-900 text-white shadow-lg shadow-gray-200'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                  }`}
+                    }`}
                 >
                   {cat.name?.toUpperCase() || 'CATEGORY'}
                 </button>
@@ -367,7 +368,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">Sync Connection Error</h3>
               <p className="text-gray-500 text-sm max-w-xs mb-6">{error}</p>
-              <button 
+              <button
                 onClick={fetchData}
                 className="px-6 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-all"
               >
@@ -381,22 +382,21 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              {}
+              { }
               <div className="grid grid-cols-[2fr_1fr_auto_auto] gap-0 border-b border-gray-100 bg-gray-50">
                 <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</div>
                 <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</div>
                 <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Stock</div>
                 <div className="px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest"></div>
               </div>
-              {}
+              { }
               {filteredProducts.map((p, idx) => {
                 const outOfStock = !p.is_service && p.branch_stock <= 0;
                 return (
                   <div
                     key={p.id}
-                    className={`grid grid-cols-[2fr_1fr_auto_auto] gap-0 items-center border-b border-gray-50 transition-colors ${
-                      outOfStock ? 'opacity-50' : 'hover:bg-indigo-50/40 cursor-pointer'
-                    } ${idx % 2 === 0 ? '' : 'bg-gray-50/50'}`}
+                    className={`grid grid-cols-[2fr_1fr_auto_auto] gap-0 items-center border-b border-gray-50 transition-colors ${outOfStock ? 'opacity-50' : 'hover:bg-indigo-50/40 cursor-pointer'
+                      } ${idx % 2 === 0 ? '' : 'bg-gray-50/50'}`}
                     onClick={() => !outOfStock && addToCart(p)}
                   >
                     <div className="px-4 py-3">
@@ -428,11 +428,10 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                       <button
                         disabled={outOfStock}
                         onClick={(e) => { e.stopPropagation(); if (!outOfStock) addToCart(p); }}
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${
-                          outOfStock
-                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                            : 'bg-gray-900 text-white hover:bg-indigo-600 active:scale-95 shadow-sm'
-                        }`}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${outOfStock
+                          ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                          : 'bg-gray-900 text-white hover:bg-indigo-600 active:scale-95 shadow-sm'
+                          }`}
                       >
                         +
                       </button>
@@ -445,7 +444,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
         </main>
       </div>
 
-      {}
+      { }
       <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-full overflow-hidden">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
           <div className="flex items-center gap-2">
@@ -472,7 +471,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                 <div className="flex-1 min-w-0">
                   <h4 className="text-xs font-bold text-gray-900 truncate">{item.name}</h4>
                   <p className="text-[10px] text-gray-500 font-medium">₱{item.price.toLocaleString()} per unit</p>
-                  
+
                   <div className="flex items-center gap-3 mt-3">
                     <div className="flex items-center bg-white border border-gray-200 rounded-lg">
                       <button onClick={() => updateQuantity(item.id, -1)} className="px-2 py-1 text-gray-400 hover:text-gray-900 transition-all duration-200">-</button>
@@ -502,8 +501,8 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 font-medium tracking-tight">Applied Discount</span>
               </div>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-20 text-right bg-transparent border-b border-gray-300 text-sm font-bold focus:border-indigo-600 outline-none"
                 value={discount}
                 onChange={(e) => setDiscount(e.target.value)}
@@ -521,18 +520,17 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
           <button
             onClick={() => setCheckoutModalOpen(true)}
             disabled={cart.length === 0}
-            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-              cart.length === 0 
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${cart.length === 0
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
               : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-200 active:shadow-none'
-            }`}
+              }`}
           >
             PROCESS CHECKOUT
           </button>
         </div>
       </div>
 
-      {}
+      { }
       <Modal open={checkoutModalOpen} onClose={() => {
         setCheckoutModalOpen(false);
         setIsRfidScanning(false);
@@ -550,7 +548,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Linked</span>
                 )}
               </div>
-              
+
               {isRfidScanning ? (
                 <div className="relative">
                   <input
@@ -585,15 +583,47 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                   <p className="text-sm text-red-600">RFID card not recognized</p>
                 </div>
               ) : (
-                <button 
-                  onClick={() => {
-                    setIsRfidScanning(true);
-                    setRfidBuffer('');
-                  }}
-                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-                >
-                  Click to Scan RFID Card
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setIsRfidScanning(true);
+                      setRfidBuffer('');
+                    }}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+                  >
+                    Click to Scan RFID Card
+                  </button>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Or enter card number manually..."
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const input = e.target as HTMLInputElement;
+                          handleRfidScan(input.value);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value.trim()) {
+                          handleRfidScan(e.target.value.trim());
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const input = (e.target as HTMLElement).previousSibling as HTMLInputElement;
+                        if (input?.value.trim()) {
+                          handleRfidScan(input.value.trim());
+                        }
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-indigo-600 text-white text-xs rounded"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -606,7 +636,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                   const cid = e.target.value;
                   setCustomerId(cid);
                   setRfidCustomer(null);
-                  setRedeemPoints('0');
+                  setSelectedReward(null);
                   // Fetch customer data if selected
                   if (cid) {
                     try {
@@ -654,48 +684,85 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
               </div>
             )}
 
-            {/* Loyalty Points Redemption */}
+            {/* Loyalty Points - Separate Add and Redeem */}
             {customerId && (
               <>
-                {(rfidCustomer?.loyalty_points || 0) > 0 && (
-                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-700 uppercase">Available Points</span>
-                      <span className="text-sm font-bold text-amber-800">{Math.floor(rfidCustomer?.loyalty_points || 0)} pts</span>
+                {(() => {
+                  const selectedCustomer = rfidCustomer || customers.find(c => c.id === parseInt(customerId));
+                  const availablePoints = selectedCustomer?.loyalty_points || 0;
+
+                  return (
+                    <div className="space-y-3">
+                      {/* ADD POINTS SECTION - Earn points from this purchase */}
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Points</span>
+                          <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">+ EARN</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">
+                            You'll earn: <span className="font-bold text-indigo-600 text-lg">+{earnedPoints} pts</span>
+                          </span>
+                          <span className="text-xs text-gray-400">1 point per ₱200</span>
+                        </div>
+                      </div>
+
+                      {/* REDEEM POINTS SECTION - Select reward product */}
+                      {availablePoints > 0 && (
+                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Redeem Reward</span>
+                            <span className="text-sm font-bold text-gray-700">{Math.floor(availablePoints)} pts</span>
+                          </div>
+
+                          {/* Available Rewards - filter products that can be redeemed with available points */}
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {products.filter(p => p.is_reward && p.points_required > 0 && p.points_required <= Math.floor(availablePoints)).map(reward => (
+                              <button
+                                key={reward.id}
+                                onClick={() => setSelectedReward(selectedReward?.id === reward.id ? null : reward)}
+                                className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${selectedReward?.id === reward.id
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-200 hover:border-indigo-300 bg-white'
+                                  }`}
+                              >
+                                <div className="text-left">
+                                  <p className="text-sm font-bold text-gray-900">{reward.name}</p>
+                                  <p className="text-xs text-gray-500">{reward.category?.name}</p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm font-black text-indigo-600">{reward.points_required} pts</span>
+                                </div>
+                              </button>
+                            ))}
+                            {products.filter(p => p.is_reward && p.points_required > 0 && p.points_required <= Math.floor(availablePoints)).length === 0 && (
+                              <p className="text-xs text-gray-400 text-center py-4">No rewards available with your points</p>
+                            )}
+                          </div>
+
+                          {/* Selected Reward */}
+                          {selectedReward && (
+                            <div className="mt-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs font-bold text-indigo-700 uppercase">Selected Reward</p>
+                                  <p className="text-sm font-bold text-gray-900">{selectedReward.name}</p>
+                                  <p className="text-xs text-gray-500">Use {selectedReward.points_required} points</p>
+                                </div>
+                                <button
+                                  onClick={() => setSelectedReward(null)}
+                                  className="text-gray-400 hover:text-red-500"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={redeemPoints}
-                        onChange={(e) => setRedeemPoints(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-amber-300 rounded-lg text-sm"
-                        placeholder="Points to redeem"
-                      />
-                      <span className="flex items-center text-sm font-medium text-amber-700">
-                        = ₱{ (parseFloat(redeemPoints || '0') * 2).toLocaleString() }
-                      </span>
-                    </div>
-                    <div className="flex gap-1 mt-2">
-                      {[10, 25, 50, 100].map(p => (
-                        <button
-                          key={p}
-                          onClick={() => setRedeemPoints(p.toString())}
-                          className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200"
-                        >
-                          -{p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {earnedPoints > 0 && (
-                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-emerald-700 uppercase">Earn Points</span>
-                      <span className="text-sm font-bold text-emerald-800">+{earnedPoints} pts</span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </>
             )}
           </div>
@@ -708,21 +775,19 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
               <div className="flex gap-2">
                 <button
                   onClick={() => setReceiptType('SI')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    receiptType === 'SI' 
-                      ? 'bg-gray-900 text-white border-gray-900' 
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${receiptType === 'SI'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
+                    }`}
                 >
                   Sales Invoice
                 </button>
                 <button
                   onClick={() => setReceiptType('DR')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    receiptType === 'DR' 
-                      ? 'bg-gray-900 text-white border-gray-900' 
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${receiptType === 'DR'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
+                    }`}
                 >
                   Delivery Receipt
                 </button>
@@ -797,23 +862,23 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
                 <span className="text-xs font-bold text-gray-400 uppercase">Total Amount</span>
                 <span className="text-2xl font-black text-white">₱{finalTotal.toLocaleString()}</span>
               </div>
-              {(parseFloat(redeemPoints) || 0) > 0 && (
+              {selectedReward && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-amber-400">Points Redeemed</span>
-                  <span className="text-amber-400">-₱{parseFloat(redeemPoints).toLocaleString()}</span>
+                  <span className="text-amber-400">Reward: {selectedReward.name}</span>
+                  <span className="text-amber-400">-{selectedReward.points_required} pts</span>
                 </div>
               )}
             </div>
 
             {/* Actions */}
             <div className="grid grid-cols-2 gap-3">
-              <button 
+              <button
                 onClick={() => handleCheckout('pending')}
                 className="py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:border-gray-900 transition-colors"
               >
                 Hold Sale
               </button>
-              <button 
+              <button
                 onClick={() => handleCheckout('completed')}
                 disabled={isProcessingTerminal}
                 className="py-3 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-black disabled:opacity-50 transition-colors"
@@ -825,7 +890,7 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
         </div>
       </Modal>
 
-      {}
+      { }
       <Modal open={successModalOpen} onClose={() => setSuccessModalOpen(false)} title="Success">
         <div className="text-center py-6">
           <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in spin-in-12 duration-500">
@@ -837,27 +902,27 @@ setProducts((pRes.data as { products?: Product[] }).products || []);
           <p className="text-gray-500 text-sm font-medium mb-8">
             Order #{lastOrder?.id} has been {lastOrder?.status === 'pending' ? 'saved as pending.' : 'processed and stock updated.'}
           </p>
-          
+
           <div className="grid grid-cols-2 gap-3 mb-4">
             <button
-               onClick={async () => { 
-                 if (lastOrder) {
-                   if (lastReceiptType === 'SI') {
-                     await printReceipt(lastOrder, lastTin, lastBusinessAddress, lastWithholdingTaxRate); 
-                   } else {
-                     await printDeliveryReceipt(lastOrder, lastTin, lastBusinessAddress, lastWithholdingTaxRate);
-                   }
-                 }
-                 setSuccessModalOpen(false); 
-               }}
-               className="flex items-center justify-center gap-2 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all"
+              onClick={async () => {
+                if (lastOrder) {
+                  if (lastReceiptType === 'SI') {
+                    await printReceipt(lastOrder, lastTin, lastBusinessAddress, lastWithholdingTaxRate);
+                  } else {
+                    await printDeliveryReceipt(lastOrder, lastTin, lastBusinessAddress, lastWithholdingTaxRate);
+                  }
+                }
+                setSuccessModalOpen(false);
+              }}
+              className="flex items-center justify-center gap-2 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all"
             >
               <Printer className="w-4 h-4" />
               PRINT {lastReceiptType}
             </button>
             <button
-               onClick={() => setSuccessModalOpen(false)}
-               className="py-3 bg-white border border-gray-200 text-gray-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all"
+              onClick={() => setSuccessModalOpen(false)}
+              className="py-3 bg-white border border-gray-200 text-gray-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all"
             >
               NEW SALE
             </button>

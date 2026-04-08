@@ -22,7 +22,7 @@ interface Order {
 }
 
 // Theme colors - indigo based
-const CHART_COLORS = ['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc', '#6366f1', '#818cf8', '#4f46e5', '#3730a3'];
+const CHART_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -218,39 +218,6 @@ export default function Dashboard() {
           <p className="text-sm font-medium text-gray-900">{new Date().toLocaleTimeString()}</p>
         </div>
       </div>
-      { }
-      {stats.low_stock_products && stats.low_stock_products?.length > 0 && (
-        <div className="mb-8 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center shadow-sm">
-          <div className="p-2 bg-orange-100 rounded-lg mr-4">
-            <AlertCircle className="w-5 h-5 text-orange-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-orange-900">Inventory Alert</h3>
-            <p className="text-xs text-orange-700">
-              {(stats?.low_stock_products?.length || 0)} products are running low on stock. Check the product catalog to restock.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                try {
-                  const res = await api.post('/api/inventory/generate-pos');
-                  const data = res.data as { message?: string };
-                  alert(data.message || 'POs generated');
-                } catch {
-                  alert('Failed to generate POs');
-                }
-              }}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors bg-white px-4 py-2 rounded-lg border border-indigo-200"
-            >
-              GENERATE POS
-            </button>
-            <a href="/products" className="text-xs font-bold text-orange-600 hover:text-orange-800 transition-colors bg-white px-4 py-2 rounded-lg border border-orange-200">
-              VIEW PRODUCTS
-            </a>
-          </div>
-        </div>
-      )}
       {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {[

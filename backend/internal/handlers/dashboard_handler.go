@@ -83,6 +83,8 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		dateFilter = fmt.Sprintf("DATE_SUB(NOW(), INTERVAL %s DAY)", days)
 	}
 
+	_ = dateFilter // unused for now but kept for future filtering
+
 	var totalSales float64
 	var totalExpenses float64
 	var productCount int64
@@ -105,30 +107,34 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 	var salesTrend []DailySale
 	ordersQuery.Select("DATE(created_at) as date, SUM(total_amount) as amount").
 		Where("created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)").
+		Where("status = ?", "completed").
 		Group("DATE(created_at)").
 		Order("date ASC").
 		Scan(&salesTrend)
 
 	var lowStockProducts []models.Product
-	stockSubquery := "(SELECT COALESCE(SUM(batches.quantity), 0) FROM batches WHERE batches.product_id = products.id"
-	var queryArgs []interface{}
+	// Use raw SQL subquery for low stock since GORM doesn't support alias in WHERE
+	var lowStockSQL string
+	var lowStockArgs []interface{}
+
 	if branchID != 0 {
-		stockSubquery += " AND batches.branch_id = ?"
-		queryArgs = append(queryArgs, branchID)
+		lowStockSQL = `SELECT * FROM products WHERE 
+			(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id AND branch_id = ?) <= ? 
+			AND deleted_at IS NULL LIMIT 5`
+		lowStockArgs = []interface{}{branchID, 5}
+	} else {
+		lowStockSQL = `SELECT * FROM products WHERE 
+			(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = products.id) <= ? 
+			AND deleted_at IS NULL LIMIT 5`
+		lowStockArgs = []interface{}{5}
 	}
-	stockSubquery += ") as stock"
 
-	whereArgs := append([]interface{}{}, queryArgs...)
-	whereArgs = append(whereArgs, 5)
-
-	database.DB.Select("products.*, "+stockSubquery, queryArgs...).
-		Where(stockSubquery+" <= ?", whereArgs...).
-		Limit(5).Find(&lowStockProducts)
+	database.DB.Raw(lowStockSQL, lowStockArgs...).Find(&lowStockProducts)
 
 	var topAdvisors []SA_Performance
-	ordersQuery.Select("service_advisor_name as advisor_name, SUM(total_amount) as total_sales, COUNT(id) as order_count").
-		Where("DATE(created_at) = CURDATE() AND service_advisor_name != ''").
-		Group("service_advisor_name").
+	ordersQuery.Select("service_advisor_name as advisor_name, SUM(total_amount) as total_sales, COUNT(id) as order_count, DATE(created_at) as date").
+		Where("DATE(created_at) = CURDATE() AND service_advisor_name != '' AND status = 'completed'").
+		Group("DATE(created_at), service_advisor_name").
 		Order("total_sales DESC").
 		Limit(5).
 		Scan(&topAdvisors)
@@ -157,18 +163,43 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		Joins("JOIN orders ON orders.id = order_items.order_id").
 		Joins("JOIN products ON products.id = order_items.product_id").
 		Joins("LEFT JOIN categories ON categories.id = products.category_id").
-		Group("categories.id, categories.name").
+		Group("COALESCE(categories.name, 'Uncategorized')").
 		Order("revenue DESC")
 
-	if branchID != 0 {
-		crQuery = crQuery.Where("orders.branch_id = ?", branchID)
-	}
-	if dateFilter != "" {
-		crQuery = crQuery.Where("orders.created_at >= ?", dateFilter)
-	}
 	crQuery.Scan(&categoryRevenue)
 
 	fmt.Printf("[DEBUG] Category revenue count: %d\n", len(categoryRevenue))
+
+	// Get product revenue for bar/line charts (top 8 products)
+	var productRevenue []ProductRevenue
+	prQuery := database.DB.Table("order_items").
+		Select("products.name as product, COALESCE(SUM(order_items.subtotal), 0) as revenue, COALESCE(SUM(order_items.subtotal) - SUM(order_items.quantity * COALESCE(products.cost_price, 0)), 0) as profit, COALESCE(SUM(order_items.subtotal), 0) as income").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Joins("JOIN products ON products.id = order_items.product_id").
+		Group("products.id, products.name").
+		Order("revenue DESC").
+		Limit(8)
+
+	prQuery.Scan(&productRevenue)
+
+	fmt.Printf("[DEBUG] Product revenue count: %d\n", len(productRevenue))
+
+	// Sales trend - all orders
+	database.DB.Model(&models.Order{}).
+		Select("DATE(created_at) as date, SUM(total_amount) as amount").
+		Where("created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)").
+		Group("DATE(created_at)").
+		Order("date ASC").
+		Scan(&salesTrend)
+
+	fmt.Printf("[DEBUG] Sales trend count: %d\n", len(salesTrend))
+
+	// Also get total sales count for debug
+	var totalSalesCount int64
+	database.DB.Model(&models.Order{}).Count(&totalSalesCount)
+	var completedSalesCount int64
+	database.DB.Model(&models.Order{}).Where("status = ?", "completed").Count(&completedSalesCount)
+	fmt.Printf("[DEBUG] Total orders: %d, Completed: %d\n", totalSalesCount, completedSalesCount)
 
 	// Calculate revenue percentages for pie chart (by category)
 	var totalCategoryRevenue float64
@@ -188,26 +219,9 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		}
 	}
 
-	// Get product revenue for bar/line charts (top 8 products)
-	// revenue = total sales, profit = sales - (cost × qty), income = total sales
-	var productRevenue []ProductRevenue
-	prQuery := database.DB.Table("order_items").
-		Select("products.name as product, COALESCE(SUM(order_items.subtotal), 0) as revenue, COALESCE(SUM(order_items.subtotal) - SUM(order_items.quantity * COALESCE(products.cost_price, 0)), 0) as profit, COALESCE(SUM(order_items.subtotal), 0) as income").
-		Joins("JOIN orders ON orders.id = order_items.order_id").
-		Joins("JOIN products ON products.id = order_items.product_id").
-		Group("products.id, products.name").
-		Order("revenue DESC").
-		Limit(8)
-
-	if branchID != 0 {
-		prQuery = prQuery.Where("orders.branch_id = ?", branchID)
-	}
-	if dateFilter != "" {
-		prQuery = prQuery.Where("orders.created_at >= ?", dateFilter)
-	}
-	prQuery.Scan(&productRevenue)
-
-	fmt.Printf("[DEBUG] Product revenue count: %d\n", len(productRevenue))
+	// Get product revenue for bar/line charts
+	// Already fetched above, no need to refetch
+	// (Product revenue is fetched earlier in this function)
 
 	var currentSales, prevSales float64
 	var currentExpenses, prevExpenses float64
@@ -217,7 +231,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 	pmStart := "DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')"
 	pmEnd := "LAST_DAY(DATE_SUB(NOW(), INTERVAL 1 MONTH))"
 
-	ordersQuery.Where("created_at >= " + cmStart).Select("COALESCE(SUM(total_amount), 0)").Scan(&currentSales)
+	ordersQuery.Where("created_at >= " + cmStart + " AND status = 'completed'").Select("COALESCE(SUM(total_amount), 0)").Scan(&currentSales)
 	database.DB.Model(&models.Order{}).
 		Where(func() string {
 			if branchID != 0 {
@@ -225,7 +239,7 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			}
 			return "1=1"
 		}(), branchID).
-		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd).
+		Where("created_at BETWEEN " + pmStart + " AND " + pmEnd + " AND status = 'completed'").
 		Select("COALESCE(SUM(total_amount), 0)").Scan(&prevSales)
 
 	expensesQuery.Where("created_at >= " + cmStart).Select("COALESCE(SUM(amount), 0)").Scan(&currentExpenses)
@@ -241,9 +255,11 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		Select("COALESCE(SUM(amount), 0)").Scan(&prevExpenses)
 
 	calculateChange := func(current, prev float64) string {
+		// Debug: just show current vs prev
+		fmt.Printf("[DEBUG] Sales - Current: %.2f, Previous: %.2f\n", current, prev)
 		if prev == 0 {
 			if current > 0 {
-				return "+100%"
+				return "NEW"
 			}
 			return "0%"
 		}

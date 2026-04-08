@@ -33,6 +33,10 @@ interface Product {
   load_index?: string;
   dot_code?: string;
   ply_rating?: string;
+  
+  // Loyalty/Reward fields
+  points_required?: number;
+  is_reward?: boolean;
 }
 
 export default function Products() {
@@ -72,6 +76,10 @@ export default function Products() {
   const [loadIndex, setLoadIndex] = useState('');
   const [dotCode, setDotCode] = useState('');
   const [plyRating, setPlyRating] = useState('');
+
+  // Loyalty/Reward fields
+  const [pointsRequired, setPointsRequired] = useState(0);
+  const [isReward, setIsReward] = useState(false);
 
   
   const [filterCategory, setFilterCategory] = useState('');
@@ -129,6 +137,11 @@ export default function Products() {
     
     setPcd(''); setOffsetEt(''); setWidth(''); setBore(''); setFinish('');
     setSpeedRating(''); setLoadIndex(''); setDotCode(''); setPlyRating('');
+    
+    // Reset loyalty/reward fields
+    setPointsRequired(0);
+    setIsReward(false);
+    
     setError('');
     setModalOpen(true);
   };
@@ -149,6 +162,11 @@ export default function Products() {
     setPcd(p.pcd || ''); setOffsetEt(p.offset_et || ''); setWidth(p.width || '');
     setBore(p.bore || ''); setFinish(p.finish || ''); setSpeedRating(p.speed_rating || '');
     setLoadIndex(p.load_index || ''); setDotCode(p.dot_code || ''); setPlyRating(p.ply_rating || '');
+    
+    // Loyalty/Reward fields
+    setPointsRequired(p.points_required || 0);
+    setIsReward(!!p.is_reward);
+    
     setError('');
     setModalOpen(true);
   };
@@ -176,6 +194,8 @@ export default function Products() {
       load_index: loadIndex,
       dot_code: dotCode,
       ply_rating: plyRating,
+      points_required: pointsRequired,
+      is_reward: isReward,
     };
     try {
       if (editing) {
@@ -366,7 +386,7 @@ export default function Products() {
                 />
               </div>
 
-              <div className="mt-4 flex items-center gap-2">
+               <div className="mt-4 flex items-center gap-2">
                  <input 
                    type="checkbox" 
                    id="isServiceToggle"
@@ -377,9 +397,36 @@ export default function Products() {
                  <label htmlFor="isServiceToggle" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
                    This is a Service / Labor Item (No stock tracking)
                  </label>
-              </div>
-            </div>
-          </div>
+               </div>
+
+               <div className="mt-4 flex items-center gap-2">
+                 <input 
+                   type="checkbox" 
+                   id="isRewardToggle"
+                   checked={isReward}
+                   onChange={(e) => setIsReward(e.target.checked)}
+                   className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                 />
+                 <label htmlFor="isRewardToggle" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                   This is a Loyalty Reward Product
+                 </label>
+               </div>
+
+               {isReward && (
+                 <div className="mt-3 ml-6">
+                   <FormField 
+                     label="Points Required" 
+                     type="number" 
+                     value={String(pointsRequired)} 
+                     onChange={(v) => setPointsRequired(parseInt(v) || 0)} 
+                     required 
+                     min={1}
+                     placeholder="e.g. 2000"
+                   />
+                 </div>
+               )}
+             </div>
+           </div>
 
           {}
           {!isService && categories.find(c => String(c.id) === categoryId)?.name?.toLowerCase()?.includes('tire') && (
