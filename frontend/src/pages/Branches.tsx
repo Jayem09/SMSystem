@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { Search, Plus, Building2, MapPin, Phone, Edit, Activity } from 'lucide-react';
+import { Search, Plus, Building2, MapPin, Phone, Edit, Activity, Mail } from 'lucide-react';
 import api from '../api/axios';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -11,6 +11,7 @@ interface Branch {
   code: string;
   address: string;
   phone: string;
+  email: string;
   is_active: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function Branches() {
     code: '',
     address: '',
     phone: '',
+    email: '',
     is_active: true
   });
 
@@ -51,8 +53,9 @@ export default function Branches() {
       setFormData({
         name: branch.name,
         code: branch.code,
-        address: branch.address,
-        phone: branch.phone,
+        address: branch.address || '',
+        phone: branch.phone || '',
+        email: branch.email || '',
         is_active: branch.is_active
       });
     } else {
@@ -62,6 +65,7 @@ export default function Branches() {
         code: '',
         address: '',
         phone: '',
+        email: '',
         is_active: true
       });
     }
@@ -225,6 +229,13 @@ export default function Branches() {
             value={formData.phone}
             onChange={(val) => setFormData({ ...formData, phone: val })}
             placeholder="Contact number"
+          />
+          <FormField
+            label="Email (for transfer notifications)"
+            value={formData.email}
+            onChange={(val) => setFormData({ ...formData, email: val })}
+            placeholder="branch@example.com"
+            icon={<Mail className="w-4 h-4" />}
           />
           
           <div className="flex items-center space-x-2 py-2">

@@ -18,11 +18,12 @@ import (
 )
 
 type TransferHandler struct {
-	LogService *services.LogService
+	LogService   *services.LogService
+	EmailService *services.EmailService
 }
 
-func NewTransferHandler(logSvc *services.LogService) *TransferHandler {
-	return &TransferHandler{LogService: logSvc}
+func NewTransferHandler(logSvc *services.LogService, emailSvc *services.EmailService) *TransferHandler {
+	return &TransferHandler{LogService: logSvc, EmailService: emailSvc}
 }
 
 type transferItemInput struct {
@@ -444,6 +445,36 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	h.LogService.Record(userID, "UPDATE", "StockTransfer", strconv.Itoa(int(transfer.ID)), fmt.Sprintf("Status changed to %s", newStatus), c.ClientIP())
+
+	// Send email notification
+	if h.EmailService != nil {
+		var sourceBranch, destBranch models.Branch
+		database.DB.First(&sourceBranch, transfer.SourceBranchID)
+		database.DB.First(&destBranch, transfer.DestinationBranchID)
+
+		// Notify destination branch
+		if destBranch.Email != "" {
+			go h.EmailService.SendTransferNotification(
+				destBranch.Email,
+				destBranch.Name,
+				transfer.ReferenceNumber,
+				newStatus,
+				sourceBranch.Name,
+				destBranch.Name,
+			)
+		}
+		// Notify source branch when completed
+		if newStatus == "completed" && sourceBranch.Email != "" {
+			go h.EmailService.SendTransferNotification(
+				sourceBranch.Email,
+				sourceBranch.Name,
+				transfer.ReferenceNumber,
+				newStatus,
+				sourceBranch.Name,
+				destBranch.Name,
+			)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Transfer status updated", "transfer": transfer})
 }

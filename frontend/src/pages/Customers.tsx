@@ -21,7 +21,7 @@ interface Customer {
   email: string;
   phone: string;
   address: string;
-  rfidCardId?: string;
+  rfid_card_id?: string;
   loyaltyPoints?: number;
 }
 
@@ -93,7 +93,7 @@ export default function Customers() {
   const openEdit = (c: Customer) => {
     setEditing(c);
     setName(c.name); setEmail(c.email); setPhone(c.phone); setAddress(c.address);
-    setRfidCardId(c.rfidCardId || '');
+    setRfidCardId(c.rfid_card_id || '');
     setError('');
     setModalOpen(true);
   };
@@ -182,7 +182,7 @@ export default function Customers() {
                   <span className={`text-xs font-medium ${(c.loyaltyPoints || 0) > 0 ? 'text-gray-600' : 'text-gray-400'}`}>
                     {c.loyaltyPoints ? c.loyaltyPoints.toFixed(0) : 0} pts
                   </span>
-                  {c.rfidCardId && (
+                  {c.rfid_card_id && (
                     <span className="text-[10px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded" title="RFID Linked">⚡</span>
                   )}
                 </div>

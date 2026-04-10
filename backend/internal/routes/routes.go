@@ -6,6 +6,7 @@ import (
 	"smsystem-backend/internal/config"
 	"smsystem-backend/internal/handlers"
 	"smsystem-backend/internal/middleware"
+	"smsystem-backend/internal/services"
 
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
@@ -34,6 +35,7 @@ type Handlers struct {
 	Search        *handlers.SearchHandler
 	System        *handlers.SystemHandler
 	Analytics     *handlers.AnalyticsHandler
+	Email         *services.EmailService
 }
 
 func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {

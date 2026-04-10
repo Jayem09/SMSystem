@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Wifi, Scan, Check, X } from 'lucide-react';
 
 interface RFIDFieldProps {
@@ -8,9 +8,11 @@ interface RFIDFieldProps {
 }
 
 export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps) {
+  const scanInputRef = useRef<HTMLInputElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [lastKeyTime, setLastKeyTime] = useState(0);
   const [buffer, setBuffer] = useState('');
+  const [inputValue, setInputValue] = useState('');
   const SCAN_TIMEOUT = 50; // ms between keystrokes for RFID scanner
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -52,6 +54,7 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
   const startScan = () => {
     setIsScanning(true);
     setBuffer('');
+    setInputValue('');
   };
 
   const cancelScan = () => {
@@ -59,24 +62,20 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
     setBuffer('');
   };
 
-  // Handle manual input - require Enter or minimum 8 chars to confirm
+  // Handle manual input - only accept numbers, require Enter to confirm
   const handleManualInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const input = e.currentTarget.value.trim();
       if (input.length >= 8) {
         onChange(input);
+        setInputValue('');
       }
     }
   };
 
   const handleManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    // Only trigger onChange when Enter is pressed or min 8 chars
-    // For now, just let user type freely but only apply on Enter
-    if (val.length >= 8) {
-      // Auto-apply when reaches 8 chars (optional, can remove)
-      // onChange(val);
-    }
+    const val = e.target.value.replace(/\D/g, ''); // Only allow numbers
+    setInputValue(val);
   };
 
   // Show card linked only when confirmed (Enter pressed or scanned)
@@ -90,78 +89,53 @@ export default function RFIDField({ value, onChange, disabled }: RFIDFieldProps)
       
       {isScanning ? (
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl animate-pulse border-2 border-dashed border-indigo-400" />
-          <div className="relative bg-gray-50 border-2 border-indigo-500 rounded-2xl p-4 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center animate-bounce">
-                <Scan className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div>
-                <p className="font-bold text-indigo-900">Scanning for card...</p>
-                <p className="text-xs text-indigo-600">Tap RFID card on reader now</p>
-              </div>
-              {buffer && (
-                <div className="bg-indigo-900 text-white px-4 py-1 rounded-full font-mono text-sm">
-                  {buffer}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={cancelScan}
-                className="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-3 h-3" /> Cancel
-              </button>
-            </div>
+          <input
+            ref={scanInputRef}
+            type="text"
+            autoFocus
+            readOnly
+            placeholder="Tap RFID card or type ID..."
+            className="w-full px-4 py-3 border-2 border-indigo-500 rounded-2xl text-sm font-medium bg-white"
+            onChange={(e) => handleScanInput(e.target.value)}
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        </div>
-      ) : isCardLinked ? (
-        <div className="relative">
-          <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <Check className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-emerald-600 font-medium uppercase tracking-wider">Card Linked</p>
-                  <p className="font-mono font-bold text-emerald-900">{value}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onChange('')}
-                disabled={disabled}
-                className="p-2 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          {buffer && (
+            <div className="text-xs text-gray-400 mt-1 ml-1">Receiving: {buffer}</div>
+          )}
         </div>
       ) : (
         <div className="relative">
           <input
             type="text"
-            value={value}
+            value={isCardLinked ? value : inputValue}
             onChange={handleManualChange}
             onKeyDown={handleManualInput}
-            placeholder="Enter card UID manually (8+ chars)"
+            placeholder="Enter card UID manually (8+ digits)"
             disabled={disabled}
             className="w-full px-4 py-3 pr-24 border border-gray-100 rounded-2xl text-sm text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-900 transition-all bg-gray-50/50 hover:bg-white placeholder:text-gray-400 pl-11"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
             <Wifi className="w-4 h-4" />
           </div>
-          <button
-            type="button"
-            onClick={startScan}
-            disabled={disabled}
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
-          >
-            <Scan className="w-3 h-3" />
-            Scan
-          </button>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {isCardLinked && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg">
+                <Check className="w-3 h-3" />
+                Linked
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={isCardLinked ? () => onChange('') : startScan}
+              disabled={disabled}
+              className={`px-3 py-1.5 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 ${isCardLinked ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+            >
+              {isCardLinked ? <X className="w-3 h-3" /> : <Scan className="w-3 h-3" />}
+              {isCardLinked ? 'Clear' : 'Scan'}
+            </button>
+          </div>
         </div>
       )}
     </div>

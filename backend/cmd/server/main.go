@@ -50,6 +50,7 @@ func main() {
 	authService := services.NewAuthService(cfg)
 	logService := services.NewLogService()
 	backupService := services.NewBackupService(cfg)
+	emailService := services.NewEmailService()
 
 	terminalService := services.NewTerminalService(true, "COM1")
 
@@ -72,10 +73,11 @@ func main() {
 		Settings:      handlers.NewSettingsHandler(logService),
 		Report:        handlers.NewReportHandler(),
 		Branch:        handlers.NewBranchHandler(logService),
-		Transfer:      handlers.NewTransferHandler(logService),
+		Transfer:      handlers.NewTransferHandler(logService, emailService),
 		Search:        handlers.NewSearchHandler(),
 		System:        handlers.NewSystemHandler(backupService),
 		Analytics:     handlers.NewAnalyticsHandler(),
+		Email:         emailService,
 	}
 
 	gin.SetMode(gin.ReleaseMode)

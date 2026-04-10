@@ -1,5 +1,5 @@
 {
-  "active": "boss niggga",
+  "active": "nigga",
   "personalities": {
     "boss niggga": {
       "name": "boss niggga",
@@ -35,6 +35,22 @@
         "drift": 0.3,
         "toast": true
       }
+    }
+  },
+  "states": {
+    "boss niggga": {
+      "current": "roast",
+      "score": -0.24116101970053,
+      "lastUpdate": 1775723086033,
+      "override": "roast",
+      "overrideExpiry": null
+    },
+    "nigga": {
+      "current": "roast",
+      "score": -1.9710398091905879,
+      "lastUpdate": 1775792153757,
+      "override": null,
+      "overrideExpiry": null
     }
   }
 }

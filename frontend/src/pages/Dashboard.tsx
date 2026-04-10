@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertCircle, TrendingUp, Package, Users, ShoppingCart, PhilippinePeso, MoreVertical, Download } from 'lucide-react';
+import { AlertCircle, TrendingUp, Package, Users, ShoppingCart, PhilippinePeso, MoreVertical, Download, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Skeleton, SkeletonCard } from '../components/EmptyState';
 
@@ -21,15 +21,24 @@ interface Order {
   items?: OrderItem[];
 }
 
+interface Branch {
+  id: number;
+  name: string;
+  code: string;
+}
+
 // Theme colors - indigo based
 const CHART_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'purchasing' || user?.role === 'purchaser';
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [timeRange, setTimeRange] = useState(30);
+  const [branchFilter, setBranchFilter] = useState<string>('ALL');
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [stats, setStats] = useState({
     total_sales: 0,
     total_expenses: 0,
@@ -58,9 +67,19 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (isSuperAdmin) {
+      api.get('/api/branches').then(res => {
+        setBranches((res.data as { branches?: Branch[] }).branches || []);
+      });
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const res = await api.get(`/api/dashboard?days=${timeRange}`);
+        const branchParam = isSuperAdmin && branchFilter !== 'ALL' ? `&branch_id=${branchFilter}` : '';
+        const res = await api.get(`/api/dashboard?days=${timeRange}${branchParam}`);
         const data = res.data as Record<string, unknown>;
         setStats(prev => ({
           ...prev,
@@ -79,7 +98,7 @@ export default function Dashboard() {
       }
     };
     fetchStats();
-  }, [timeRange]);
+  }, [timeRange, branchFilter, isSuperAdmin]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(val);
@@ -217,6 +236,31 @@ export default function Dashboard() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Last Updated</p>
           <p className="text-sm font-medium text-gray-900">{new Date().toLocaleTimeString()}</p>
         </div>
+      </div>
+      <div className="flex justify-end gap-3 mb-6">
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-gray-400" />
+            <select
+              className="text-xs font-bold border-gray-200 rounded-lg bg-gray-50 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+            >
+              <option value="ALL">All Branches</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <select
+          className="text-xs font-bold border-gray-200 rounded-lg bg-gray-50 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+          value={timeRange}
+          onChange={(e) => setTimeRange(Number(e.target.value))}
+        >
+          <option value={30}>Last 30 Days</option>
+          <option value={7}>Last 7 Days</option>
+        </select>
       </div>
       {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

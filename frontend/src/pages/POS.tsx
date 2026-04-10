@@ -722,8 +722,8 @@ export default function POS() {
                                 key={reward.id}
                                 onClick={() => setSelectedReward(selectedReward?.id === reward.id ? null : reward)}
                                 className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${selectedReward?.id === reward.id
-                                    ? 'border-indigo-500 bg-indigo-50'
-                                    : 'border-gray-200 hover:border-indigo-300 bg-white'
+                                  ? 'border-indigo-500 bg-indigo-50'
+                                  : 'border-gray-200 hover:border-indigo-300 bg-white'
                                   }`}
                               >
                                 <div className="text-left">
