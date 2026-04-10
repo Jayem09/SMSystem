@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://168.144.46.137:8080';
-console.log('API_BASE:', API_BASE);
+console.debug('API_BASE:', API_BASE);
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -28,7 +28,7 @@ class TauriApi {
 
   private getFullUrl(url: string, config?: ApiConfig): string {
     const fullURL = url.startsWith('http') ? url : this.baseURL + url;
-    console.log('getFullUrl:', url, '->', fullURL);
+    console.debug('getFullUrl:', url, '->', fullURL);
     if (config && config.params) {
       const params = new URLSearchParams(config.params).toString();
       return fullURL + `?${params}`;
@@ -63,12 +63,10 @@ class TauriApi {
     }
 
     const fullUrl = url;
-    console.log('fetchRequest:', method, fullUrl);
+    console.debug('fetchRequest:', method, fullUrl);
     const response = await fetch(fullUrl, options);
-    console.log('Fetch called:', method, fullUrl, 'status:', response.status);
+    console.debug('Fetch called:', method, fullUrl, 'status:', response.status);
     if (!response.ok) {
-      alert(`API Error: ${method} ${url} returned ${response.status}`);
-    }
     let responseData: unknown;
     try {
       responseData = await response.json();
@@ -163,7 +161,7 @@ const wrapMethod = (originalFn: (url: string, dataOrConfig?: unknown, config?: A
     dataOrConfig?: unknown,
     config?: ApiConfig
   ): Promise<ApiResponse> => {
-    console.log('wrapMethod called:', url, 'with data:', dataOrConfig);
+    console.debug('wrapMethod called:', url, 'with data:', dataOrConfig);
     try {
       if (dataOrConfig && typeof dataOrConfig === 'object' && !Array.isArray(dataOrConfig)) {
         const hasSignal = 'signal' in (dataOrConfig as ApiConfig);
