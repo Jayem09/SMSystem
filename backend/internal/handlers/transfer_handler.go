@@ -447,27 +447,28 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 	h.LogService.Record(userID, "UPDATE", "StockTransfer", strconv.Itoa(int(transfer.ID)), fmt.Sprintf("Status changed to %s", newStatus), c.ClientIP())
 
 	// Send email notification
+	// Notify source branch when their transfer status changes
 	if h.EmailService != nil {
 		var sourceBranch, destBranch models.Branch
 		database.DB.First(&sourceBranch, transfer.SourceBranchID)
 		database.DB.First(&destBranch, transfer.DestinationBranchID)
 
-		// Notify destination branch
-		if destBranch.Email != "" {
+		// Notify source branch about status change
+		if sourceBranch.Email != "" {
 			go h.EmailService.SendTransferNotification(
-				destBranch.Email,
-				destBranch.Name,
+				sourceBranch.Email,
+				sourceBranch.Name,
 				transfer.ReferenceNumber,
 				newStatus,
 				sourceBranch.Name,
 				destBranch.Name,
 			)
 		}
-		// Notify source branch when completed
-		if newStatus == "completed" && sourceBranch.Email != "" {
+		// Also notify destination when transfer is in transit (they need to receive)
+		if newStatus == "in_transit" && destBranch.Email != "" {
 			go h.EmailService.SendTransferNotification(
-				sourceBranch.Email,
-				sourceBranch.Name,
+				destBranch.Email,
+				destBranch.Name,
 				transfer.ReferenceNumber,
 				newStatus,
 				sourceBranch.Name,

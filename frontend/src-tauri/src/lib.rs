@@ -51,6 +51,73 @@ async fn api_post(url: String, body: String, token: Option<String>) -> Result<Ap
     }
 }
 
+#[tauri::command]
+async fn api_put(url: String, body: String, token: Option<String>) -> Result<ApiResponse, String> {
+    let client = reqwest::Client::new();
+    let mut request = client.put(&url)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .timeout(std::time::Duration::from_secs(30));
+    
+    if let Some(t) = token {
+        request = request.header("Authorization", format!("Bearer {}", t));
+    }
+    
+    match request.send().await {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let status_text = response.status().canonical_reason().unwrap_or("").to_string();
+            let data = response.json().await.unwrap_or(serde_json::Value::Null);
+            Ok(ApiResponse { data, status, status_text })
+        }
+        Err(e) => Err(format!("PUT failed: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn api_delete(url: String, token: Option<String>) -> Result<ApiResponse, String> {
+    let client = reqwest::Client::new();
+    let mut request = client.delete(&url)
+        .timeout(std::time::Duration::from_secs(30));
+    
+    if let Some(t) = token {
+        request = request.header("Authorization", format!("Bearer {}", t));
+    }
+    
+    match request.send().await {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let status_text = response.status().canonical_reason().unwrap_or("").to_string();
+            let data = response.json().await.unwrap_or(serde_json::Value::Null);
+            Ok(ApiResponse { data, status, status_text })
+        }
+        Err(e) => Err(format!("DELETE failed: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn api_patch(url: String, body: String, token: Option<String>) -> Result<ApiResponse, String> {
+    let client = reqwest::Client::new();
+    let mut request = client.patch(&url)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .timeout(std::time::Duration::from_secs(30));
+    
+    if let Some(t) = token {
+        request = request.header("Authorization", format!("Bearer {}", t));
+    }
+    
+    match request.send().await {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let status_text = response.status().canonical_reason().unwrap_or("").to_string();
+            let data = response.json().await.unwrap_or(serde_json::Value::Null);
+            Ok(ApiResponse { data, status, status_text })
+        }
+        Err(e) => Err(format!("PATCH failed: {}", e))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -63,7 +130,7 @@ pub fn run() {
          
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![api_get, api_post])
+    .invoke_handler(tauri::generate_handler![api_get, api_post, api_put, api_delete, api_patch])
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_updater::Builder::new().build())

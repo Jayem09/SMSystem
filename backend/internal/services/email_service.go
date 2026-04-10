@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -51,8 +52,11 @@ func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error 
 
 func (e *EmailService) SendTransferNotification(toEmail, branchName, refNumber, status, fromBranch, toBranch string) error {
 	if toEmail == "" {
+		log.Printf("EmailService: No email address, skipping notification")
 		return nil
 	}
+
+	log.Printf("EmailService: Sending transfer notification to %s (ref: %s, status: %s)", toEmail, refNumber, status)
 
 	subject := fmt.Sprintf("[%s] Stock Transfer %s", branchName, status)
 

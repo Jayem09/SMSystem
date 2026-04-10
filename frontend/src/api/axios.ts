@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://168.144.46.137:8080';
+console.log('API_BASE:', API_BASE);
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -26,11 +27,13 @@ class TauriApi {
   }
 
   private getFullUrl(url: string, config?: ApiConfig): string {
+    const fullURL = url.startsWith('http') ? url : this.baseURL + url;
+    console.log('getFullUrl:', url, '->', fullURL);
     if (config && config.params) {
       const params = new URLSearchParams(config.params).toString();
-      url += `?${params}`;
+      return fullURL + `?${params}`;
     }
-    return url.startsWith('http') ? url : this.baseURL + url;
+    return fullURL;
   }
 
   private getToken(): string | null {
@@ -59,7 +62,13 @@ class TauriApi {
       options.body = JSON.stringify(data);
     }
 
-    const response = await fetch(url, options);
+    const fullUrl = url;
+    console.log('fetchRequest:', method, fullUrl);
+    const response = await fetch(fullUrl, options);
+    console.log('Fetch called:', method, fullUrl, 'status:', response.status);
+    if (!response.ok) {
+      alert(`API Error: ${method} ${url} returned ${response.status}`);
+    }
     let responseData: unknown;
     try {
       responseData = await response.json();
@@ -87,24 +96,31 @@ class TauriApi {
     const token = this.getToken();
     try {
       if (isTauri && typeof invoke !== 'undefined') {
+        type TauriResult = {data: unknown; status: number; status_text: string};
+        let result: TauriResult;
+
         if (method === 'GET') {
-          const result = await invoke<{data: unknown; status: number; status_text: string}>('api_get', { url: fullUrl, token });
-          return {
-            data: result.data,
-            status: result.status,
-            statusText: result.status_text,
-            headers: {},
-          };
-        } else {
+          result = await invoke<TauriResult>('api_get', { url: fullUrl, token });
+        } else if (method === 'PUT') {
           const body = data ? JSON.stringify(data) : '{}';
-          const result = await invoke<{data: unknown; status: number; status_text: string}>('api_post', { url: fullUrl, body, token });
-          return {
-            data: result.data,
-            status: result.status,
-            statusText: result.status_text,
-            headers: {},
-          };
+          result = await invoke<TauriResult>('api_put', { url: fullUrl, body, token });
+        } else if (method === 'DELETE') {
+          result = await invoke<TauriResult>('api_delete', { url: fullUrl, token });
+        } else if (method === 'PATCH') {
+          const body = data ? JSON.stringify(data) : '{}';
+          result = await invoke<TauriResult>('api_patch', { url: fullUrl, body, token });
+        } else {
+          // POST and any other method
+          const body = data ? JSON.stringify(data) : '{}';
+          result = await invoke<TauriResult>('api_post', { url: fullUrl, body, token });
         }
+
+        return {
+          data: result.data,
+          status: result.status,
+          statusText: result.status_text,
+          headers: {},
+        };
       }
     } catch (err) {
       console.warn('[API] Tauri invoke not available, using fetch:', err);
@@ -147,15 +163,16 @@ const wrapMethod = (originalFn: (url: string, dataOrConfig?: unknown, config?: A
     dataOrConfig?: unknown,
     config?: ApiConfig
   ): Promise<ApiResponse> => {
+    console.log('wrapMethod called:', url, 'with data:', dataOrConfig);
     try {
       if (dataOrConfig && typeof dataOrConfig === 'object' && !Array.isArray(dataOrConfig)) {
         const hasSignal = 'signal' in (dataOrConfig as ApiConfig);
         const hasParams = 'params' in (dataOrConfig as ApiConfig);
         if (hasSignal || hasParams) {
-          return await originalFn(url, undefined, dataOrConfig as ApiConfig) as Promise<ApiResponse>;
+          return await originalFn(url, undefined, dataOrConfig as ApiConfig);
         }
       }
-      return await originalFn(url, dataOrConfig, config) as Promise<ApiResponse>;
+      return await originalFn(url, dataOrConfig, config);
     } catch (error) {
       const err = error as { status?: number };
       if (err.status === 401) {
