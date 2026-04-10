@@ -19,7 +19,6 @@ func NewBranchHandler(logSvc *services.LogService) *BranchHandler {
 	return &BranchHandler{LogService: logSvc}
 }
 
-
 func (h *BranchHandler) List(c *gin.Context) {
 	var branches []models.Branch
 	if err := database.DB.Find(&branches).Error; err != nil {
@@ -29,15 +28,29 @@ func (h *BranchHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"branches": branches})
 }
 
-
 func (h *BranchHandler) Create(c *gin.Context) {
-	var branch models.Branch
-	if err := c.ShouldBindJSON(&branch); err != nil {
+	var input struct {
+		Name     string `json:"name"`
+		Code     string `json:"code"`
+		Address  string `json:"address"`
+		Phone    string `json:"phone"`
+		Email    string `json:"email"`
+		IsActive bool   `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	
+	branch := models.Branch{
+		Name:     input.Name,
+		Code:     input.Code,
+		Address:  input.Address,
+		Phone:    input.Phone,
+		Email:    input.Email,
+		IsActive: input.IsActive,
+	}
+
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&branch).Error; err != nil {
 			return err
@@ -67,7 +80,6 @@ func (h *BranchHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, branch)
 }
 
-
 func (h *BranchHandler) Update(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	var branch models.Branch
@@ -76,10 +88,25 @@ func (h *BranchHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := c.ShouldBindJSON(&branch); err != nil {
+	var input struct {
+		Name     string `json:"name"`
+		Code     string `json:"code"`
+		Address  string `json:"address"`
+		Phone    string `json:"phone"`
+		Email    string `json:"email"`
+		IsActive bool   `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	branch.Name = input.Name
+	branch.Code = input.Code
+	branch.Address = input.Address
+	branch.Phone = input.Phone
+	branch.Email = input.Email
+	branch.IsActive = input.IsActive
 
 	if err := database.DB.Save(&branch).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update branch"})

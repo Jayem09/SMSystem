@@ -10,7 +10,7 @@ type Branch struct {
 	Code      string    `gorm:"size:50;unique;not null" json:"code"`
 	Address   string    `gorm:"size:500" json:"address"`
 	Phone     string    `gorm:"size:50" json:"phone"`
-	Email     string    `gorm:"size:255" json:"email"`
+	Email     string    `gorm:"size:255;column:email" json:"email"`
 	IsActive  bool      `gorm:"default:true" json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
