@@ -75,7 +75,7 @@ export default function Dashboard() {
     }
   }, [isSuperAdmin]);
 
-  const { data: statsData, isLoading: statsLoading } = useDataFetch({
+  const { data: statsData } = useDataFetch({
     queryKey: ['dashboard', 'stats', timeRange, branchFilter],
     queryFn: () => {
       const branchParam = isSuperAdmin && branchFilter !== 'ALL' ? `&branch_id=${branchFilter}` : '';

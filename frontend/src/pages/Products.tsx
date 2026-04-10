@@ -88,7 +88,7 @@ export default function Products() {
 
   const [isImporting, setIsImporting] = useState(false);
 
-  const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useDataFetch({
+  const { data: productsData, refetch: refetchProducts } = useDataFetch({
     queryKey: ['products', search, filterCategory, filterBrand],
     queryFn: () => {
       const params: Record<string, string> = { all: '1' };
