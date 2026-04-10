@@ -36,10 +36,7 @@ export default function Branches() {
     try {
       const res = await api.get('/api/branches');
       const data = res.data as { branches: Branch[] };
-      console.log('Branches response:', data);
-      console.log('Setting branches:', data.branches);
       setBranches(data.branches);
-      console.log('Branches state set to:', data.branches);
     } catch (error) {
       console.error('Failed to fetch branches:', error);
     } finally {
@@ -78,20 +75,9 @@ export default function Branches() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Submitting: ' + JSON.stringify(formData));
-    console.log('formData before submit:', formData);
-    console.log('editingBranch:', editingBranch);
     try {
       if (editingBranch) {
-        console.log('Sending PUT to:', `/api/branches/${editingBranch.id}`, 'with data:', formData);
-        try {
-          const res = await api.put(`/api/branches/${editingBranch.id}`, formData);
-          console.log('Update response:', res);
-          console.log('Update response.data:', res.data);
-        } catch (err) {
-          console.error('Update error:', err);
-          alert('Error: ' + JSON.stringify(err));
-        }
+        await api.put(`/api/branches/${editingBranch.id}`, formData);
       } else {
         await api.post('/api/branches', formData);
       }

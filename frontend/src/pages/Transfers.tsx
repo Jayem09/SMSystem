@@ -484,7 +484,6 @@ export default function Transfers() {
 
       {}
       <Modal open={viewModalOpen} onClose={() => setViewModalOpen(false)} title={`TRANSFER ${selectedTransfer?.reference_number}`} maxWidth="max-w-2xl">
-        {selectedTransfer && (() => { console.log('DEBUG MODAL:', { isSuperAdmin, status: selectedTransfer.status, myBranchId, src: selectedTransfer.source_branch_id, dest: selectedTransfer.destination_branch_id }); return null; })()}
         {selectedTransfer && (
           <div className="space-y-6">
             <div className="flex justify-between items-start pb-4 border-b border-gray-100">
