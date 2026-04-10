@@ -20,9 +20,9 @@ type EmailService struct {
 
 func NewEmailService() *EmailService {
 	return &EmailService{
-		APIKey:    os.Getenv("RESEND_API_KEY"),
-		FromEmail: getEmailEnv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
-		FromName:  getEmailEnv("RESEND_FROM_NAME", "SMSystem"),
+		APIKey:    os.Getenv("BREVO_API_KEY"),
+		FromEmail: getEmailEnv("BREVO_FROM_EMAIL", "johndinglasan12@gmail.com"),
+		FromName:  getEmailEnv("BREVO_FROM_NAME", "SMSystem"),
 		AdminBcc:  os.Getenv("ADMIN_BCC_EMAIL"),
 	}
 }
@@ -34,17 +34,22 @@ func getEmailEnv(key, fallback string) string {
 	return fallback
 }
 
-type resendPayload struct {
-	From    string   `json:"from"`
-	To      []string `json:"to"`
-	Bcc     []string `json:"bcc,omitempty"`
-	Subject string   `json:"subject"`
-	HTML    string   `json:"html"`
+type brevoContact struct {
+	Email string `json:"email"`
+	Name  string `json:"name,omitempty"`
+}
+
+type brevoPayload struct {
+	Sender      brevoContact   `json:"sender"`
+	To          []brevoContact `json:"to"`
+	Bcc         []brevoContact `json:"bcc,omitempty"`
+	Subject     string         `json:"subject"`
+	HTMLContent string         `json:"htmlContent"`
 }
 
 func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error {
 	if e.APIKey == "" {
-		log.Printf("[EMAIL] RESEND_API_KEY not set, skipping email to %s | Subject: %s", toEmail, subject)
+		log.Printf("[EMAIL] BREVO_API_KEY not set, skipping email to %s | Subject: %s", toEmail, subject)
 		return nil
 	}
 
@@ -52,15 +57,15 @@ func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error 
 		return nil
 	}
 
-	payload := resendPayload{
-		From:    fmt.Sprintf("%s <%s>", e.FromName, e.FromEmail),
-		To:      []string{toEmail},
-		Subject: subject,
-		HTML:    htmlContent,
+	payload := brevoPayload{
+		Sender:      brevoContact{Email: e.FromEmail, Name: e.FromName},
+		To:          []brevoContact{{Email: toEmail, Name: toName}},
+		Subject:     subject,
+		HTMLContent: htmlContent,
 	}
 
 	if e.AdminBcc != "" && e.AdminBcc != toEmail {
-		payload.Bcc = []string{e.AdminBcc}
+		payload.Bcc = []brevoContact{{Email: e.AdminBcc}}
 	}
 
 	body, err := json.Marshal(payload)
@@ -68,26 +73,26 @@ func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error 
 		return fmt.Errorf("failed to marshal email payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+e.APIKey)
+	req.Header.Set("api-key", e.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("[EMAIL] ERROR sending to %s: %v", toEmail, err)
-		return fmt.Errorf("resend API request failed: %w", err)
+		return fmt.Errorf("brevo API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		log.Printf("[EMAIL] ERROR Resend returned %d to %s: %s", resp.StatusCode, toEmail, string(respBody))
-		return fmt.Errorf("resend returned status %d: %s", resp.StatusCode, string(respBody))
+		log.Printf("[EMAIL] ERROR Brevo returned %d to %s: %s", resp.StatusCode, toEmail, string(respBody))
+		return fmt.Errorf("brevo returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	log.Printf("[EMAIL] OK sent to %s | Subject: %s", toEmail, subject)
