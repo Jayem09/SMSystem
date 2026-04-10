@@ -42,29 +42,25 @@ export default function Modal({ open, onClose, title, children, maxWidth, wide }
 
   if (!open) return null;
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      onClick={(e) => {
+        // Close when clicking directly on the outer backdrop wrapper
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
     >
       <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-        onClick={handleBackdropClick}
-        aria-hidden="true"
-      />
-
-      <div 
         ref={modalRef}
-        className={`relative bg-white border border-gray-200 rounded-xl shadow-xl w-full ${width} mx-4 max-h-[90vh] overflow-y-auto animate-fadeIn`}
+        className={`bg-white border border-gray-200 rounded-xl shadow-xl w-full ${width} mx-4 max-h-[90vh] overflow-y-auto animate-fadeIn`}
         tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50">
           <h2 id="modal-title" className="text-sm font-semibold text-gray-900">{title}</h2>

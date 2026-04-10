@@ -1,33 +1,29 @@
 package services
 
 import (
-	"crypto/tls"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"net/smtp"
+	"net/http"
 	"os"
 	"strings"
 )
 
 type EmailService struct {
-	SMTPHost     string
-	SMTPPort     string
-	SMTPUser     string
-	SMTPPassword string
-	FromEmail    string
-	FromName     string
-	AdminBcc     string
+	APIKey    string
+	FromEmail string
+	FromName  string
+	AdminBcc  string
 }
 
 func NewEmailService() *EmailService {
 	return &EmailService{
-		SMTPHost:     getEmailEnv("SMTP_HOST", "smtp.gmail.com"),
-		SMTPPort:     getEmailEnv("SMTP_PORT", "587"),
-		SMTPUser:     os.Getenv("SMTP_USER"),
-		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
-		FromEmail:    getEmailEnv("SMTP_FROM_EMAIL", ""),
-		FromName:     getEmailEnv("SMTP_FROM_NAME", "SMSystem"),
-		AdminBcc:     os.Getenv("ADMIN_BCC_EMAIL"),
+		APIKey:    os.Getenv("RESEND_API_KEY"),
+		FromEmail: getEmailEnv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
+		FromName:  getEmailEnv("RESEND_FROM_NAME", "SMSystem"),
+		AdminBcc:  os.Getenv("ADMIN_BCC_EMAIL"),
 	}
 }
 
@@ -38,9 +34,17 @@ func getEmailEnv(key, fallback string) string {
 	return fallback
 }
 
+type resendPayload struct {
+	From    string   `json:"from"`
+	To      []string `json:"to"`
+	Bcc     []string `json:"bcc,omitempty"`
+	Subject string   `json:"subject"`
+	HTML    string   `json:"html"`
+}
+
 func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error {
-	if e.SMTPUser == "" || e.SMTPPassword == "" {
-		log.Printf("[EMAIL] SMTP credentials not set, skipping email to %s | Subject: %s", toEmail, subject)
+	if e.APIKey == "" {
+		log.Printf("[EMAIL] RESEND_API_KEY not set, skipping email to %s | Subject: %s", toEmail, subject)
 		return nil
 	}
 
@@ -48,88 +52,43 @@ func (e *EmailService) Send(toEmail, toName, subject, htmlContent string) error 
 		return nil
 	}
 
-	// Build recipient list
-	recipients := []string{toEmail}
+	payload := resendPayload{
+		From:    fmt.Sprintf("%s <%s>", e.FromName, e.FromEmail),
+		To:      []string{toEmail},
+		Subject: subject,
+		HTML:    htmlContent,
+	}
+
 	if e.AdminBcc != "" && e.AdminBcc != toEmail {
-		recipients = append(recipients, e.AdminBcc)
+		payload.Bcc = []string{e.AdminBcc}
 	}
 
-	// Determine from email
-	fromEmail := e.FromEmail
-	if fromEmail == "" {
-		fromEmail = e.SMTPUser
-	}
-
-	// Build email headers and body
-	var msg strings.Builder
-	msg.WriteString(fmt.Sprintf("From: %s <%s>\r\n", e.FromName, fromEmail))
-	msg.WriteString(fmt.Sprintf("To: %s <%s>\r\n", toName, toEmail))
-	if e.AdminBcc != "" && e.AdminBcc != toEmail {
-		msg.WriteString(fmt.Sprintf("Bcc: %s\r\n", e.AdminBcc))
-	}
-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
-	msg.WriteString("\r\n")
-	msg.WriteString(htmlContent)
-
-	// Connect to SMTP server with TLS
-	auth := smtp.PlainAuth("", e.SMTPUser, e.SMTPPassword, e.SMTPHost)
-	addr := e.SMTPHost + ":" + e.SMTPPort
-
-	// Use TLS for port 587 (STARTTLS)
-	tlsConfig := &tls.Config{
-		ServerName: e.SMTPHost,
-	}
-
-	conn, err := smtp.Dial(addr)
+	body, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[EMAIL] ERROR connecting to SMTP %s: %v", addr, err)
-		return fmt.Errorf("failed to connect to SMTP: %w", err)
-	}
-	defer conn.Close()
-
-	// STARTTLS
-	if err = conn.StartTLS(tlsConfig); err != nil {
-		log.Printf("[EMAIL] ERROR STARTTLS: %v", err)
-		return fmt.Errorf("STARTTLS failed: %w", err)
+		return fmt.Errorf("failed to marshal email payload: %w", err)
 	}
 
-	// Authenticate
-	if err = conn.Auth(auth); err != nil {
-		log.Printf("[EMAIL] ERROR auth as %s: %v", e.SMTPUser, err)
-		return fmt.Errorf("SMTP auth failed: %w", err)
-	}
-
-	// Set sender
-	if err = conn.Mail(fromEmail); err != nil {
-		return fmt.Errorf("MAIL FROM failed: %w", err)
-	}
-
-	// Set recipients
-	for _, rcpt := range recipients {
-		if err = conn.Rcpt(rcpt); err != nil {
-			log.Printf("[EMAIL] ERROR adding recipient %s: %v", rcpt, err)
-		}
-	}
-
-	// Send body
-	w, err := conn.Data()
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("DATA failed: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	_, err = w.Write([]byte(msg.String()))
+	req.Header.Set("Authorization", "Bearer "+e.APIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("write failed: %w", err)
+		log.Printf("[EMAIL] ERROR sending to %s: %v", toEmail, err)
+		return fmt.Errorf("resend API request failed: %w", err)
 	}
+	defer resp.Body.Close()
 
-	err = w.Close()
-	if err != nil {
-		return fmt.Errorf("close failed: %w", err)
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		log.Printf("[EMAIL] ERROR Resend returned %d to %s: %s", resp.StatusCode, toEmail, string(respBody))
+		return fmt.Errorf("resend returned status %d: %s", resp.StatusCode, string(respBody))
 	}
-
-	conn.Quit()
 
 	log.Printf("[EMAIL] OK sent to %s | Subject: %s", toEmail, subject)
 	return nil
