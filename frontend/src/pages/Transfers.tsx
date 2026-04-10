@@ -525,28 +525,38 @@ export default function Transfers() {
 
             {}
             <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-3 justify-end relative z-10">
-              {/* Approve/Reject — admin or source branch */}
-              {(isSuperAdmin || Number(myBranchId) === Number(selectedTransfer.source_branch_id)) && selectedTransfer.status === 'pending' && (
-                <>
-                  <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'rejected')} className="px-4 py-3 bg-red-50 text-red-600 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-red-100 transition-colors cursor-pointer"><XCircle className="w-4 h-4"/> REJECT</button>
-                  <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'approved')} className="px-4 py-3 bg-blue-50 text-blue-700 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-100 transition-colors cursor-pointer"><CheckCircle className="w-4 h-4"/> APPROVE</button>
-                </>
-              )}
+              {/* actionBranch: for super_admin use the selected branch filter, for regular users use their own branch */}
+              {(() => {
+                const actionBranch = isSuperAdmin ? (focusBranchId || myBranchId) : myBranchId;
+                const isSource = Number(actionBranch) === Number(selectedTransfer.source_branch_id);
+                const isDest = Number(actionBranch) === Number(selectedTransfer.destination_branch_id);
+                return (
+                  <>
+                    {/* Approve/Reject — source branch or any super_admin */}
+                    {(isSuperAdmin || isSource) && selectedTransfer.status === 'pending' && (
+                      <>
+                        <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'rejected')} className="px-4 py-3 bg-red-50 text-red-600 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-red-100 transition-colors cursor-pointer"><XCircle className="w-4 h-4"/> REJECT</button>
+                        <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'approved')} className="px-4 py-3 bg-blue-50 text-blue-700 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-100 transition-colors cursor-pointer"><CheckCircle className="w-4 h-4"/> APPROVE</button>
+                      </>
+                    )}
 
-              {/* Ship — ONLY source branch (they pack and send) */}
-              {Number(myBranchId) === Number(selectedTransfer.source_branch_id) && selectedTransfer.status === 'approved' && (
-                <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'in_transit')} className="px-6 py-3 bg-purple-600 text-white font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-purple-500 transition-colors shadow-xl shadow-purple-200 cursor-pointer"><Truck className="w-4 h-4"/> SHIP INVENTORY</button>
-              )}
+                    {/* Ship — source branch only */}
+                    {isSource && selectedTransfer.status === 'approved' && (
+                      <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'in_transit')} className="px-6 py-3 bg-purple-600 text-white font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-purple-500 transition-colors shadow-xl shadow-purple-200 cursor-pointer"><Truck className="w-4 h-4"/> SHIP INVENTORY</button>
+                    )}
 
-              {/* Confirm Receipt — ONLY destination branch (they verify items) */}
-              {Number(myBranchId) === Number(selectedTransfer.destination_branch_id) && selectedTransfer.status === 'in_transit' && (
-                <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'completed')} className="px-6 py-3 bg-green-600 text-white font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-green-500 transition-colors shadow-xl shadow-green-200 cursor-pointer"><Inbox className="w-4 h-4"/> CONFIRM RECEIPT</button>
-              )}
+                    {/* Confirm Receipt — destination branch only */}
+                    {isDest && selectedTransfer.status === 'in_transit' && (
+                      <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'completed')} className="px-6 py-3 bg-green-600 text-white font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-green-500 transition-colors shadow-xl shadow-green-200 cursor-pointer"><Inbox className="w-4 h-4"/> CONFIRM RECEIPT</button>
+                    )}
 
-              {/* Cancel — ONLY destination branch (they requested it) */}
-              {Number(myBranchId) === Number(selectedTransfer.destination_branch_id) && selectedTransfer.status === 'pending' && (
-                <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'cancelled')} className="px-4 py-3 bg-white border border-gray-200 text-gray-500 font-black text-xs rounded-xl uppercase tracking-widest hover:bg-gray-50 transition-colors cursor-pointer">CANCEL REQUEST</button>
-              )}
+                    {/* Cancel — destination branch only */}
+                    {isDest && selectedTransfer.status === 'pending' && (
+                      <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'cancelled')} className="px-4 py-3 bg-white border border-gray-200 text-gray-500 font-black text-xs rounded-xl uppercase tracking-widest hover:bg-gray-50 transition-colors cursor-pointer">CANCEL REQUEST</button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
