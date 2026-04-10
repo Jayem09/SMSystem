@@ -7,6 +7,7 @@ import {
   Search, ShoppingCart, Trash2, Printer, CheckCircle, Package
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { usePOS, type POSProduct } from '../hooks/usePOS';
 
 interface Product {
   id: number;
@@ -64,16 +65,9 @@ interface SettingsData {
 }
 
 export default function POS() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts } = usePOS();
+  const { products, categories, customers, cart, search, selectedCategory, loading, error } = state;
   const [serviceAdvisors] = useState<string[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
 
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
@@ -104,23 +98,22 @@ export default function POS() {
   const { showToast } = useToast();
 
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
     try {
-      const [pRes, cRes, custRes, settingsRes] = await Promise.all([
+      const [pRes, cRes, custRes] = await Promise.all([
         api.get('/api/products?all=1'),
         api.get('/api/categories'),
         api.get('/api/customers'),
-        api.get('/api/settings'),
       ]);
-      setProducts((pRes.data as { products?: Product[] }).products || []);
-      setCategories((cRes.data as { categories?: { id: number; name: string }[] }).categories || []);
-      setCustomers((custRes.data as { customers?: Customer[] }).customers || []);
+      dispatch({ type: 'SET_PRODUCTS', payload: (pRes.data as { products?: POSProduct[] }).products || [] });
+      dispatch({ type: 'SET_CATEGORIES', payload: (cRes.data as { categories?: { id: number; name: string }[] }).categories || [] });
+      dispatch({ type: 'SET_CUSTOMERS', payload: (custRes.data as { customers?: { id: number; name: string }[] }).customers || [] });
     } catch {
       console.error('POS data fetch failed');
-      setError('Failed to sync with inventory system. Please check your connection.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to sync with inventory system. Please check your connection.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
@@ -186,41 +179,13 @@ export default function POS() {
     fetchData();
   }, []);
 
-  const addToCart = (product: Product) => {
+  const finalTotal = Math.max(0, posSubtotal - parseFloat(discount || '0'));
+  const earnedPoints = Math.floor(posSubtotal / 200);
+
+  const handleAddToCart = (product: Product) => {
     if (!product.is_service && product.branch_stock <= 0) return;
-
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        if (existing.quantity >= product.branch_stock) return prev;
-        return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
+    addToCart(product as POSProduct);
   };
-
-  const removeFromCart = (productId: number) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
-  };
-
-  const updateQuantity = (productId: number, delta: number) => {
-    setCart((prev) =>
-      prev.map((item) => {
-        if (item.id === productId) {
-          const maxQty = item.is_service ? 999 : item.branch_stock;
-          const newQty = Math.max(1, Math.min(item.quantity + delta, maxQty));
-          return { ...item, quantity: newQty };
-        }
-        return item;
-      })
-    );
-  };
-
-  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const finalTotal = Math.max(0, subtotal - parseFloat(discount || '0'));
-  const earnedPoints = Math.floor(subtotal / 200);
 
   const handleCheckout = async (status: 'pending' | 'completed' = 'completed') => {
     if (cart.length === 0) return;
@@ -282,7 +247,7 @@ export default function POS() {
       setLastWithholdingTaxRate(parseFloat(withholdingTaxRate) || 0);
       setLastReceiptType(receiptType);
 
-      setCart([]);
+      clearCart();
       setCheckoutModalOpen(false);
       setSuccessModalOpen(true);
 
@@ -307,12 +272,6 @@ export default function POS() {
     }
   };
 
-  const filteredProducts = (products || []).filter(p => {
-    const matchesSearch = p.name?.toLowerCase()?.includes(search.toLowerCase()) || false;
-    const matchesCategory = selectedCategory ? p.category_id === selectedCategory : true;
-    return matchesSearch && matchesCategory;
-  });
-
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       { }
@@ -331,7 +290,7 @@ export default function POS() {
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 max-w-[50%] no-scrollbar">
               <button
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => setCategory(null)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === null
                   ? 'bg-gray-900 text-white shadow-lg shadow-gray-200'
                   : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
@@ -342,7 +301,7 @@ export default function POS() {
               {categories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => setCategory(cat.id)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat.id
                     ? 'bg-gray-900 text-white shadow-lg shadow-gray-200'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
@@ -397,7 +356,7 @@ export default function POS() {
                     key={p.id}
                     className={`grid grid-cols-[2fr_1fr_auto_auto] gap-0 items-center border-b border-gray-50 transition-colors ${outOfStock ? 'opacity-50' : 'hover:bg-indigo-50/40 cursor-pointer'
                       } ${idx % 2 === 0 ? '' : 'bg-gray-50/50'}`}
-                    onClick={() => !outOfStock && addToCart(p)}
+                    onClick={() => !outOfStock && handleAddToCart(p)}
                   >
                     <div className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -427,7 +386,7 @@ export default function POS() {
                     <div className="px-3 py-3">
                       <button
                         disabled={outOfStock}
-                        onClick={(e) => { e.stopPropagation(); if (!outOfStock) addToCart(p); }}
+                        onClick={(e) => { e.stopPropagation(); if (!outOfStock) handleAddToCart(p); }}
                         className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${outOfStock
                           ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
                           : 'bg-gray-900 text-white hover:bg-indigo-600 active:scale-95 shadow-sm'
