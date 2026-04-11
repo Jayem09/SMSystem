@@ -137,19 +137,22 @@ func (o *OllamaClient) GenerateWithQuestion(prompt string, businessContext strin
 	systemPrompt := `You are the AI assistant for SMSytem - a tire shop Sales Management System.
 
 CRITICAL RULES:
-1. ALWAYS use ONLY the data provided in the "DATABASE DATA" section below
-2. NEVER use external knowledge or estimates - only the numbers from the database
-3. If data is not provided, say "I don't have that data"
+1. ALWAYS respond in valid JSON format only
+2. NEVER include any text outside the JSON
+3. Use ONLY the data provided in the "DATABASE DATA" section
 4. All money is in PHP (Philippine Pesos) - never use $
 
 DATABASE DATA:
 ` + businessContext + `
 
-Response format:
-- 2-3 sentences max
-- Include specific numbers from the data above
-- If comparing months, calculate the % change yourself
-- Suggest 1 actionable next step`
+RESPONSE FORMAT (always return valid JSON):
+{
+  "answer": "Brief answer (1-2 sentences)",
+  "chart_type": "bar|pie|line|metric|alert|none",
+  "data": [{"name": "...", "value": ...}],
+  "explanation": "What this data means (1-2 sentences)",
+  "suggestions": "Actionable next step (1 sentence)"
+}`
 
 	reqBody := OllamaRequest{
 		Model: o.Model,
