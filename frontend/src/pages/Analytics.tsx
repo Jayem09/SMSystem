@@ -42,7 +42,7 @@ export default function Analytics() {
   const [aiMode, setAiMode] = useState(false);
 
   const sendQuery = async (q: string) => {
-    if (!q.trim()) return;
+    if (!q.trim() || loading) return;
     
     const questionId = Date.now();
     setHistory(prev => [...prev, { id: questionId, type: 'question', query: q, answer: '', data: null, chartType: '' }]);
@@ -66,9 +66,16 @@ try {
             : h
         ));
       } catch (err: unknown) {
-        const error = err as { response?: { data?: { error?: string } }, message?: string };
-        setError(error.response?.data?.error || error.message || 'Failed to fetch analytics');
-        setHistory(prev => prev.filter(h => h.id !== questionId));
+        const errObj = err as { response?: { data?: { error?: string } }; message?: string; cause?: string };
+        const errMsg = errObj.response?.data?.error || errObj.message || errObj.cause || 'Failed to fetch analytics';
+        console.error('Analytics error:', errMsg);
+        setError(errMsg);
+        // Keep the question in history so user sees what failed
+        setHistory(prev => prev.map(h => 
+          h.id === questionId 
+            ? { ...h, answer: 'Error: ' + errMsg }
+            : h
+        ));
       } finally {
         setLoading(false);
       }
