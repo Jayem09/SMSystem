@@ -54,7 +54,7 @@ try {
         const modeParam = aiMode ? 'ai' : 'fast';
         const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}&mode=${modeParam}`);
         // Type the response
-        const response = res?.data as {answer?: string; data?: unknown; chart_type?: string; explanation?: string; suggestions?: string} | undefined;
+        const response = res?.data as {answer?: string; data?: Record<string, unknown>; chart_type?: string; explanation?: string; suggestions?: string} | undefined;
         const answer = response?.answer ?? '';
         const data = response?.data ?? null;
         const chartType = response?.chart_type ?? '';
