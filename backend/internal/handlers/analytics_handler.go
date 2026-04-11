@@ -140,7 +140,8 @@ func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode str
 	// If mode is "ai" and Fast mode didn't find a match (returned default fallback), try Ollama
 	if mode == "ai" && strings.Contains(answer, "I couldn't understand that") {
 		ollama := NewOllamaClient()
-		ollamaAnswer, err := ollama.Generate(question)
+		ctx := ollama.GetBusinessContext(branchID)
+		ollamaAnswer, err := ollama.GenerateWithQuestion(question, ctx)
 		if err != nil {
 			log.Printf("Ollama error: %v", err)
 		} else {
