@@ -138,13 +138,12 @@ func (h *AnalyticsHandler) Query(c *gin.Context) {
 
 func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode string) *QueryResult {
 	question = strings.ToLower(question)
-	patterns := h.getQueryPatterns()
 
 	// In "ai" mode, ALWAYS use Ollama - skip regex matching
 	if mode == "ai" {
 		ollama := NewOllamaClient()
 		ctx := ollama.GetBusinessContext(branchID)
-		resp, err := ollama.GenerateWithQuestion(question, ctx)
+		resp, _ := ollama.GenerateWithQuestion(question, ctx)
 
 		// Try to parse as JSON
 		var aiResp AIResponse
@@ -161,17 +160,31 @@ func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode str
 			}
 		}
 
-		// Fallback: if JSON parsing fails, use raw response as answer
-		if err != nil {
-			log.Printf("AI JSON parse error: %v", err)
+		// JSON parse failed - retry
+		log.Printf("AI JSON parse failed, response: %s", resp[:min(200, len(resp))])
+		retryResp, _ := ollama.GenerateWithQuestion(question+" Respond in VALID JSON only.", ctx)
+		if json.Valid([]byte(retryResp)) {
+			if err := json.Unmarshal([]byte(retryResp), &aiResp); err == nil {
+				return &QueryResult{
+					Query:       question,
+					Answer:      aiResp.Answer,
+					Data:        aiResp.Data,
+					ChartType:   aiResp.ChartType,
+					Explanation: aiResp.Explanation,
+					Suggestions: aiResp.Suggestions,
+				}
+			}
 		}
+
+		// Still failed - return retry response as text or error
 		return &QueryResult{
 			Query:  question,
-			Answer: resp,
+			Answer: "AI unavailable. Please try again.",
 		}
 	}
 
 	// Fast mode: use regex patterns
+	patterns := h.getQueryPatterns()
 	for _, pattern := range patterns {
 		matches := pattern.Regex.FindStringSubmatch(question)
 		if len(matches) > 1 {
