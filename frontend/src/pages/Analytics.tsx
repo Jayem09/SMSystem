@@ -26,6 +26,10 @@ interface HistoryItem {
   data: Record<string, unknown> | null;
   // Chart type string (metric/bar/pie/...) for renderChart
   chartType: string;
+  // AI explanation text
+  explanation?: string;
+  // AI suggestions for follow-up
+  suggestions?: string;
   // Optional: type marker to support future extension
   type?: string;
 }
@@ -46,25 +50,21 @@ export default function Analytics() {
     setLoading(true);
     setError('');
 
-     try {
-        const modeParam = aiMode ? 'ai' : 'fast'
-        const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}&mode=${modeParam}`);
-       // Be defensive in case the backend shape changes slightly
-       const answer = res?.data?.answer ?? '';
-       const data = res?.data?.data ?? null;
-       const chartType = res?.data?.chart_type ?? '';
-       setHistory(prev => prev.map(h => 
-         h.id === questionId 
-           ? { ...h, answer, data, chartType }
-           : h
-       ));
-     } catch (err: unknown) {
-       const error = err as { response?: { data?: { error?: string } }, message?: string };
-       setError(error.response?.data?.error || error.message || 'Failed to fetch analytics');
-       setHistory(prev => prev.filter(h => h.id !== questionId));
-     } finally {
-       setLoading(false);
-     }
+try {
+         const modeParam = aiMode ? 'ai' : 'fast'
+         const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}&mode=${modeParam}`);
+        // Be defensive in case the backend shape changes slightly
+        const answer = res?.data?.answer ?? '';
+        const data = res?.data?.data ?? null;
+        const chartType = res?.data?.chart_type ?? '';
+        const explanation = res?.data?.explanation ?? '';
+        const suggestions = res?.data?.suggestions ?? '';
+        setHistory(prev => prev.map(h => 
+          h.id === questionId 
+            ? { ...h, answer, data, chartType, explanation, suggestions }
+            : h
+        ));
+      }
   };
 
   const formatCurrency = (val: number) => {
@@ -282,6 +282,28 @@ export default function Analytics() {
                   <pre className={`whitespace-pre-wrap text-sm text-gray-700 font-sans ${item.chartType ? 'mt-4 pt-4 border-t border-gray-100' : ''}`}>
                     {item.answer}
                   </pre>
+                  
+                  {/* AI Explanation */}
+                  {item.explanation && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-indigo-500" />
+                        <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Analysis</span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{item.explanation}</p>
+                    </div>
+                  )}
+                  
+                  {/* AI Suggestions */}
+                  {item.suggestions && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Suggestions</span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{item.suggestions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

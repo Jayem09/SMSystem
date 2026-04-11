@@ -28,10 +28,12 @@ func NewAnalyticsHandler() *AnalyticsHandler {
 }
 
 type QueryResult struct {
-	Query     string      `json:"query"`
-	Answer    string      `json:"answer"`
-	Data      interface{} `json:"data,omitempty"`
-	ChartType string      `json:"chart_type,omitempty"`
+	Query       string      `json:"query"`
+	Answer      string      `json:"answer"`
+	Data        interface{} `json:"data,omitempty"`
+	ChartType   string      `json:"chart_type,omitempty"`
+	Explanation string      `json:"explanation,omitempty"`
+	Suggestions string      `json:"suggestions,omitempty"`
 }
 
 type QueryPattern struct {
@@ -159,10 +161,12 @@ func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode str
 			if err := json.Unmarshal([]byte(resp), &aiResp); err == nil {
 				// Valid JSON response - return structured data
 				return &QueryResult{
-					Query:     question,
-					Answer:    aiResp.Answer,
-					Data:      aiResp.Data,
-					ChartType: aiResp.ChartType,
+					Query:       question,
+					Answer:      aiResp.Answer,
+					Data:        aiResp.Data,
+					ChartType:   aiResp.ChartType,
+					Explanation: aiResp.Explanation,
+					Suggestions: aiResp.Suggestions,
 				}
 			}
 		}
