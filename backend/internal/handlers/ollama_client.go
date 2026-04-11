@@ -124,9 +124,10 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 	var branchOrders []branchOrderCount
 	db.Raw("SELECT branch_id, COUNT(*) as count FROM orders WHERE status != 'cancelled' AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW()) GROUP BY branch_id").Scan(&branchOrders)
 
-	// Branch breakdown - LOW STOCK PER BRANCH
-	var branchLowStock []branchOrderCount
-	db.Raw("SELECT p.branch_id as branch_id, COUNT(*) as count FROM products p WHERE p.stock <= p.reorder_level AND p.deleted_at IS NULL GROUP BY p.branch_id").Scan(&branchLowStock)
+	// Note: Products are CENTRAL inventory (shared across all branches), not per-branch
+	// Low stock is calculated from the shared inventory
+	var totalLowStock int
+	db.Raw("SELECT COUNT(*) as count FROM products WHERE stock <= reorder_level AND deleted_at IS NULL").Scan(&totalLowStock)
 
 	// Product categories
 	var categories []categorySummary
@@ -170,14 +171,8 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 					break
 				}
 			}
-			low := 0
-			for _, l := range branchLowStock {
-				if l.BranchID == b.BranchID {
-					low = l.Count
-					break
-				}
-			}
-			context += fmt.Sprintf("BranchID:%d %s: ₱%.2f (%d orders, %d low stock)\n", b.BranchID, b.BranchName, b.Total, orders, low)
+			// Products are central inventory (shared), show total low stock
+			context += fmt.Sprintf("BranchID:%d %s: ₱%.2f (%d orders, %d low stock items)\n", b.BranchID, b.BranchName, b.Total, orders, totalLowStock)
 		}
 	}
 
