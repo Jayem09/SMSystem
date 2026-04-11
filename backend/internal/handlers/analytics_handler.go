@@ -118,11 +118,13 @@ func (h *AnalyticsHandler) Query(c *gin.Context) {
 		return
 	}
 
-	result := h.processQuery(question, branchID)
+	mode := c.DefaultQuery("mode", "fast") // "fast" = regex, "ai" = ollama
+
+	result := h.processQuery(question, branchID, mode)
 	c.JSON(http.StatusOK, result)
 }
 
-func (h *AnalyticsHandler) processQuery(question string, branchID uint) *QueryResult {
+func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode string) *QueryResult {
 	question = strings.ToLower(question)
 	patterns := h.getQueryPatterns()
 
@@ -134,6 +136,18 @@ func (h *AnalyticsHandler) processQuery(question string, branchID uint) *QueryRe
 	}
 
 	answer := h.fallbackQuery(question)
+
+	// If mode is "ai" and Fast mode didn't find a match, try Ollama
+	if mode == "ai" && answer == "Sorry, I couldn't understand that question. Try asking about revenue, sales, inventory, or customers." {
+		ollama := NewOllamaClient()
+		ollamaAnswer, err := ollama.Generate(question)
+		if err != nil {
+			log.Printf("Ollama error: %v", err)
+		} else {
+			answer = ollamaAnswer
+		}
+	}
+
 	return &QueryResult{
 		Query:  question,
 		Answer: answer,

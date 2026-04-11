@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import api from '../api/axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Send, Bot, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, AlertCircle, Loader2, Sparkles, Zap } from 'lucide-react';
 
 const QUICK_QUERIES = [
   { label: 'Revenue this month', query: 'how much did we earn this month' },
@@ -35,19 +35,20 @@ export default function Analytics() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [error, setError] = useState('');
+  const [aiMode, setAiMode] = useState(false);
 
   const sendQuery = async (q: string) => {
     if (!q.trim()) return;
     
     const questionId = Date.now();
-    // Push a new entry to show the question immediately with a loading state
     setHistory(prev => [...prev, { id: questionId, type: 'question', query: q, answer: '', data: null, chartType: '' }]);
     setQuestion('');
     setLoading(true);
     setError('');
 
      try {
-       const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}`);
+        const modeParam = aiMode ? 'ai' : 'fast'
+        const res = await api.get(`/api/analytics?q=${encodeURIComponent(q)}&mode=${modeParam}`);
        // Be defensive in case the backend shape changes slightly
        const answer = res?.data?.answer ?? '';
        const data = res?.data?.data ?? null;
@@ -211,14 +212,27 @@ export default function Analytics() {
   return (
     <div className="h-full flex flex-col">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-indigo-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">AI Analytics</h1>
+              <p className="text-sm text-gray-500">Ask questions in plain English</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">AI Analytics</h1>
-            <p className="text-sm text-gray-500">Ask questions in plain English</p>
-          </div>
+          <button
+            onClick={() => setAiMode(!aiMode)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              aiMode 
+                ? 'bg-purple-100 text-purple-700 border border-purple-300' 
+                : 'bg-gray-100 text-gray-600 border border-gray-200'
+            }`}
+          >
+            <Zap className={`w-4 h-4 ${aiMode ? 'fill-purple-500' : ''}`} />
+            {aiMode ? 'AI Mode' : 'Fast Mode'}
+          </button>
         </div>
       </div>
 
