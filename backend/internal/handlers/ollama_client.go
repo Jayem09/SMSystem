@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"smsystem-backend/internal/database"
@@ -43,7 +44,23 @@ type OllamaResponse struct {
 	Done    bool    `json:"done"`
 }
 
+// Cached context - refresh every 5 minutes
+var contextCache struct {
+	sync.RWMutex
+	context   string
+	timestamp time.Time
+}
+
 func (o *OllamaClient) GetBusinessContext(branchID uint) string {
+	// Check cache first (5 min expiry)
+	contextCache.RLock()
+	if time.Since(contextCache.timestamp) < 5*time.Minute && contextCache.context != "" {
+		defer contextCache.RUnlock()
+		return contextCache.context
+	}
+	contextCache.RUnlock()
+
+	// Rebuild context (same queries as before)
 	db := database.DB
 
 	// === STRUCTS ===
@@ -234,6 +251,12 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 			context += fmt.Sprintf("- %s | %s | BranchID:%d\n", s.Name, s.Role, s.BranchID)
 		}
 	}
+
+	// Update cache
+	contextCache.Lock()
+	contextCache.context = context
+	contextCache.timestamp = time.Now()
+	contextCache.Unlock()
 
 	return context
 }
