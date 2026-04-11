@@ -125,27 +125,36 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 func (o *OllamaClient) GenerateWithQuestion(prompt string, businessContext string) (string, error) {
 	systemPrompt := `You are a tire shop analytics assistant. 
 
-For questions about sales, products, customers, expenses, or any data that can be visualized, you MUST respond with ONLY a JSON object in this exact format (no other text before or after):
+IMPORTANT - When to use JSON:
+- ONLY respond with JSON when the user asks about specific data like: sales, revenue, products, customers, expenses, orders, profit, trends, charts, analytics, comparisons, rankings
+- For ALL other questions (greetings, casual chat, opinions, help requests), respond in plain conversational text WITHOUT JSON
 
+Examples of data questions (use JSON):
+- "how much did we earn this month"
+- "best selling products"
+- "show me sales by category"
+- "top customers this week"
+- "profit vs last month"
+
+Examples of non-data questions (plain text):
+- "yo" or "hello" or "hi"
+- "how are you"
+- "what can you do"
+- "thanks"
+- "good morning"
+
+JSON format for data questions:
 {
   "chart_type": "bar|line|pie|metric",
-  "title": "Short descriptive title",
-  "labels": ["label1", "label2", "label3", ...],
-  "values": [number1, number2, number3, ...],
-  "summary": "One sentence summary of the data"
+  "title": "Short title",
+  "labels": ["label1", "label2"],
+  "values": [100, 200],
+  "summary": "One sentence"
 }
-
-Chart type rules:
-- bar: comparing categories (e.g., monthly sales, top products, sales by category)
-- line: trends over time (e.g., daily sales, weekly revenue)
-- pie: parts of a whole (e.g., sales by category, payment method breakdown)
-- metric: single important number (e.g., total revenue, order count, profit)
-
-For simple greetings or non-data questions, respond in plain conversational text.
 
 Data: ` + businessContext + `
 
-Remember: JSON ONLY for data questions, plain text for everything else.`
+Remember: JSON only for data/analytics questions, plain text for everything else.`
 
 	reqBody := OllamaRequest{
 		Model: o.Model,
