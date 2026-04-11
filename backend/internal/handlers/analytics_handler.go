@@ -187,35 +187,6 @@ func (h *AnalyticsHandler) processQuery(question string, branchID uint, mode str
 
 	answer := h.fallbackQuery(question)
 
-	// If mode is "ai" and Fast mode didn't find a match (returned default fallback), try Ollama
-	if mode == "ai" && strings.Contains(answer, "I couldn't understand that") {
-		ollama := NewOllamaClient()
-		ctx := ollama.GetBusinessContext(branchID)
-		resp, err := ollama.GenerateWithQuestion(question, ctx)
-
-		// Try to parse as JSON
-		var aiResp AIResponse
-		if json.Valid([]byte(resp)) {
-			if err := json.Unmarshal([]byte(resp), &aiResp); err == nil {
-				// Valid JSON response - return structured data
-				return &QueryResult{
-					Query:       question,
-					Answer:      aiResp.Answer,
-					Data:        aiResp.Data,
-					ChartType:   aiResp.ChartType,
-					Explanation: aiResp.Explanation,
-					Suggestions: aiResp.Suggestions,
-				}
-			}
-		}
-
-		// Fallback: if JSON parsing fails, use raw response as answer
-		if err != nil {
-			log.Printf("AI JSON parse error: %v", err)
-		}
-		answer = resp
-	}
-
 	return &QueryResult{
 		Query:  question,
 		Answer: answer,
