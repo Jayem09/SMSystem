@@ -24,7 +24,7 @@ func NewOllamaClient() *OllamaClient {
 	}
 	return &OllamaClient{
 		BaseURL: baseURL,
-		Model:   "llama3.2:1b",
+		Model:   "qwen2.5:0.5b",
 	}
 }
 
@@ -86,9 +86,9 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 }
 
 func (o *OllamaClient) GenerateWithQuestion(prompt string, businessContext string) (string, error) {
-	systemPrompt := `You help a tire shop owner. Reply SHORT. Use this data:
-` + businessContext + `
-Answer in JSON: {"answer":"reply","chart_type":"none","explanation":"","suggestions":""}`
+	systemPrompt := `You are a helpful assistant for a tire shop. Reply in English only. Keep it short.
+Data: ` + businessContext + `
+Respond in JSON: {"answer":"your answer","chart_type":"none","explanation":"","suggestions":""}`
 
 	reqBody := OllamaRequest{
 		Model: o.Model,
@@ -104,7 +104,7 @@ Answer in JSON: {"answer":"reply","chart_type":"none","explanation":"","suggesti
 		return "", err
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Post(o.BaseURL+"/api/chat", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Ollama: %v", err)
