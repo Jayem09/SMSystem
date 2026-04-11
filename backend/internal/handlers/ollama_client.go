@@ -262,20 +262,9 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 }
 
 func (o *OllamaClient) GenerateWithQuestion(prompt string, businessContext string) (string, error) {
-	systemPrompt := `You are a friendly AI assistant for a tire shop owner.
-
-You help answer questions about sales, inventory, and business performance.
-
-IMPORTANT:
-- Keep your answer SHORT and friendly (1-2 sentences)
-- Use simple JSON format
-- If someone says hi or hello, just say hello back friendly
-
-DATABASE (use this to answer):
+	systemPrompt := `You help a tire shop owner. Reply SHORT. Use this data:
 ` + businessContext + `
-
-Reply with this JSON format:
-{"answer":"short friendly answer","chart_type":"none","explanation":"","suggestions":""}`
+Answer in JSON: {"answer":"reply","chart_type":"none","explanation":"","suggestions":""}`
 
 	reqBody := OllamaRequest{
 		Model: o.Model,
