@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"smsystem-backend/internal/config"
@@ -48,12 +50,8 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		})
 	})
 
-	router.GET("/api/debug-promo-test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "promo route works from debug"})
-	})
-
-	router.POST("/api/promo/send", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "unprotected promo route works"})
+	router.GET("/api/xxxtest", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "xxx test works"})
 	})
 
 	router.GET("/api/status", h.System.GetStatus)
@@ -250,6 +248,11 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 	}
 
 	router.Use(static.Serve("/", static.LocalFile("./public", true)))
+
+	router.GET("/api/zzztest", func(c *gin.Context) {
+		log.Println("=== ZZZ TEST ROUTE HIT ===")
+		c.JSON(200, gin.H{"message": "zzz test works"})
+	})
 
 	router.NoRoute(func(c *gin.Context) {
 		c.File("./public/index.html")
