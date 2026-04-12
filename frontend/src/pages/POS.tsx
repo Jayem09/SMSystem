@@ -115,9 +115,11 @@ export default function POS() {
   }, [isRfidScanning]);
 
   const handleRfidInputChange = (value: string) => {
+    setRfidBuffer(value);
     // Check for Enter key ( RFID scanner sends Enter at the end )
     if (value.includes('\n') || value.endsWith('\r')) {
       const cleanValue = value.replace(/[\r\n]/g, '').trim();
+      console.log('RFID scanned:', cleanValue);
       if (cleanValue.length >= 8) {
         handleRfidScan(cleanValue);
       }
@@ -125,7 +127,6 @@ export default function POS() {
       setIsRfidScanning(false);
       return;
     }
-    setRfidBuffer(value);
   };
 
   const handleRfidInputKeyDown = (e: React.KeyboardEvent) => {
@@ -137,7 +138,9 @@ export default function POS() {
 
   const handleRfidScan = async (uid: string) => {
     try {
+      console.log('RFID scanning:', uid);
       const res = await api.get(`/api/customers/rfid/${uid}`);
+      console.log('RFID response:', res.data);
       const data = res.data as { customer?: Customer };
       if (data?.customer) {
         setRfidCustomer(data.customer);
@@ -149,9 +152,12 @@ export default function POS() {
         setRfidCustomer(null);
         showToast('RFID card not recognized.', 'error');
       }
-    } catch {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      console.log('RFID error:', error);
       setRfidError(true);
       setRfidCustomer(null);
+      showToast(error.response?.data?.error || 'RFID card not recognized', 'error');
     }
   };
 
