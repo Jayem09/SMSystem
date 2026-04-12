@@ -524,8 +524,8 @@ export default function Transfers() {
                 const isDest = Number(actionBranch) === Number(selectedTransfer.destination_branch_id);
                 return (
                   <>
-                    {/* Approve/Reject — source branch or any super_admin */}
-                    {(isSuperAdmin || isSource) && selectedTransfer.status === 'pending' && (
+                    {/* Approve/Reject — DESTINATION branch approves, super_admin can also approve */}
+                    {(isSuperAdmin || isDest) && selectedTransfer.status === 'pending' && (
                       <>
                         <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'rejected')} className="px-4 py-3 bg-red-50 text-red-600 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-red-100 transition-colors cursor-pointer"><XCircle className="w-4 h-4"/> REJECT</button>
                         <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'approved')} className="px-4 py-3 bg-blue-50 text-blue-700 font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-blue-100 transition-colors cursor-pointer"><CheckCircle className="w-4 h-4"/> APPROVE</button>
@@ -542,8 +542,8 @@ export default function Transfers() {
                       <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'completed')} className="px-6 py-3 bg-green-600 text-white font-black text-xs rounded-xl uppercase tracking-widest flex items-center gap-2 hover:bg-green-500 transition-colors shadow-xl shadow-green-200 cursor-pointer"><Inbox className="w-4 h-4"/> CONFIRM RECEIPT</button>
                     )}
 
-                    {/* Cancel — destination branch only */}
-                    {isDest && selectedTransfer.status === 'pending' && (
+                    {/* Cancel — source branch or requester can cancel */}
+                    {isSource && selectedTransfer.status === 'pending' && (
                       <button onClick={() => handleUpdateStatus(selectedTransfer.id, 'cancelled')} className="px-4 py-3 bg-white border border-gray-200 text-gray-500 font-black text-xs rounded-xl uppercase tracking-widest hover:bg-gray-50 transition-colors cursor-pointer">CANCEL REQUEST</button>
                     )}
                   </>
