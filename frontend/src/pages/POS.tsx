@@ -116,23 +116,24 @@ export default function POS() {
 
   const handleRfidInputChange = (value: string) => {
     setRfidBuffer(value);
-    // Check for Enter key ( RFID scanner sends Enter at the end )
-    if (value.includes('\n') || value.endsWith('\r')) {
-      const cleanValue = value.replace(/[\r\n]/g, '').trim();
-      console.log('RFID scanned:', cleanValue);
-      if (cleanValue.length >= 8) {
-        handleRfidScan(cleanValue);
-      }
-      setRfidBuffer('');
-      setIsRfidScanning(false);
-      return;
-    }
   };
 
   const handleRfidInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setRfidBuffer('');
       setIsRfidScanning(false);
+    }
+    // Also check for Enter key here as backup
+    if (e.key === 'Enter') {
+      const value = (e.target as HTMLInputElement).value;
+      const cleanValue = value.replace(/[\r\n]/g, '').trim();
+      console.log('RFID scanned via keydown:', cleanValue);
+      if (cleanValue.length >= 8) {
+        handleRfidScan(cleanValue);
+      }
+      setRfidBuffer('');
+      setIsRfidScanning(false);
+      e.preventDefault();
     }
   };
 
