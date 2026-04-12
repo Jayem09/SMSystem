@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -237,8 +238,8 @@ Format EXACTLY like this:
 		}
 
 		client := &http.Client{Timeout: 30 * time.Second}
-		// Native generateContent URL
-		apiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+		// Native generateContent URL - Matching the exact model that worked in your curl
+		apiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 		if err != nil {
 			return "", err
@@ -253,10 +254,7 @@ Format EXACTLY like this:
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			var bodyBytes []byte
-			if resp.Body != nil {
-				bodyBytes, _ = json.Marshal(resp.Body) // Placeholder for logs
-			}
+			bodyBytes, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			return "", fmt.Errorf("Gemini Native returned status %d. Error body: %s", resp.StatusCode, string(bodyBytes))
 		}
