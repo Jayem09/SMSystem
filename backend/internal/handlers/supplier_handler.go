@@ -29,16 +29,26 @@ type supplierInput struct {
 	Notes         string `json:"notes"`
 }
 
-
 func (h *SupplierHandler) List(c *gin.Context) {
+	branchID, _ := GetUintFromContext(c, "branchID")
+
 	var suppliers []models.Supplier
-	if err := database.DB.Order("name ASC").Find(&suppliers).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch suppliers"})
-		return
+	if branchID > 0 {
+		if err := database.DB.
+			Joins("INNER JOIN branch_suppliers bs ON bs.supplier_id = suppliers.id AND bs.branch_id = ?", branchID).
+			Order("name ASC").
+			Find(&suppliers).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch suppliers"})
+			return
+		}
+	} else {
+		if err := database.DB.Order("name ASC").Find(&suppliers).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch suppliers"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"suppliers": suppliers})
 }
-
 
 func (h *SupplierHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -54,7 +64,6 @@ func (h *SupplierHandler) GetByID(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"supplier": supplier})
 }
-
 
 func (h *SupplierHandler) Create(c *gin.Context) {
 	var input supplierInput
@@ -77,6 +86,16 @@ func (h *SupplierHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Auto-link supplier to creator's branch
+	branchID, _ := GetUintFromContext(c, "branchID")
+	if branchID > 0 {
+		link := models.BranchSupplier{
+			BranchID:   branchID,
+			SupplierID: supplier.ID,
+		}
+		database.DB.Create(&link)
+	}
+
 	userIDValue, _ := c.Get("userID")
 	if userIDValue != nil {
 		h.LogService.Record(userIDValue.(uint), "CREATE", "Supplier", strconv.Itoa(int(supplier.ID)), fmt.Sprintf("Created supplier: %s", supplier.Name), c.ClientIP())
@@ -84,7 +103,6 @@ func (h *SupplierHandler) Create(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Supplier created", "supplier": supplier})
 }
-
 
 func (h *SupplierHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -125,7 +143,6 @@ func (h *SupplierHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Supplier updated", "supplier": supplier})
 }
 
-
 func (h *SupplierHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -145,4 +162,90 @@ func (h *SupplierHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Supplier deleted"})
+}
+
+func (h *SupplierHandler) LinkToBranch(c *gin.Context) {
+	supplierID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid supplier ID"})
+		return
+	}
+	branchIDParam, err := strconv.ParseUint(c.Param("branchId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid branch ID"})
+		return
+	}
+
+	var supplier models.Supplier
+	if err := database.DB.First(&supplier, supplierID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+
+	var branch models.Branch
+	if err := database.DB.First(&branch, branchIDParam).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
+		return
+	}
+
+	link := models.BranchSupplier{
+		BranchID:   uint(branchIDParam),
+		SupplierID: uint(supplierID),
+	}
+
+	if err := database.DB.Create(&link).Error; err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Supplier is already linked to this branch"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "LINK", "BranchSupplier", fmt.Sprintf("%d-%d", supplierID, branchIDParam), fmt.Sprintf("Linked supplier %s to branch %s", supplier.Name, branch.Name), c.ClientIP())
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Supplier linked to branch"})
+}
+
+func (h *SupplierHandler) UnlinkFromBranch(c *gin.Context) {
+	supplierID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid supplier ID"})
+		return
+	}
+	branchIDParam, err := strconv.ParseUint(c.Param("branchId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid branch ID"})
+		return
+	}
+
+	result := database.DB.Where("supplier_id = ? AND branch_id = ?", supplierID, branchIDParam).Delete(&models.BranchSupplier{})
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Link not found"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	if userIDValue != nil {
+		h.LogService.Record(userIDValue.(uint), "UNLINK", "BranchSupplier", fmt.Sprintf("%d-%d", supplierID, branchIDParam), fmt.Sprintf("Unlinked supplier #%d from branch #%d", supplierID, branchIDParam), c.ClientIP())
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Supplier unlinked from branch"})
+}
+
+func (h *SupplierHandler) GetLinkedBranches(c *gin.Context) {
+	supplierID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid supplier ID"})
+		return
+	}
+
+	var branches []models.Branch
+	if err := database.DB.
+		Joins("INNER JOIN branch_suppliers bs ON bs.branch_id = branches.id AND bs.supplier_id = ?", supplierID).
+		Find(&branches).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch linked branches"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"branches": branches})
 }

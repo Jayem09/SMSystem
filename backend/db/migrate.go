@@ -245,6 +245,7 @@ func SeedDefaultData(db *gorm.DB) error {
 
 func DropAllTables(db *gorm.DB) error {
 	tables := []string{
+		"branch_suppliers",
 		"stock_transfer_items",
 		"stock_transfers",
 		"settings",

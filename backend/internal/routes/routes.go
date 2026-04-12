@@ -125,6 +125,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		}
 
 		protected.GET("/branches", h.Branch.List)
+		protected.GET("/suppliers", h.Supplier.List)
 
 		transfers := protected.Group("/transfers")
 		{
@@ -133,6 +134,13 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			transfers.POST("", h.Transfer.Create)
 
 			transfers.PUT("/:id/status", h.Transfer.UpdateStatus)
+		}
+
+		purchaseOrders := protected.Group("/purchase-orders")
+		{
+			purchaseOrders.GET("", h.PurchaseOrder.List)
+			purchaseOrders.GET("/:id", h.PurchaseOrder.GetByID)
+			purchaseOrders.POST("", h.PurchaseOrder.Create)
 		}
 
 		admin := protected.Group("")
@@ -177,18 +185,17 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 
 			suppliers := admin.Group("/suppliers")
 			{
-				suppliers.GET("", h.Supplier.List)
 				suppliers.GET("/:id", h.Supplier.GetByID)
 				suppliers.POST("", h.Supplier.Create)
 				suppliers.PUT("/:id", h.Supplier.Update)
 				suppliers.DELETE("/:id", h.Supplier.Delete)
+				suppliers.POST("/:id/branches/:branchId", h.Supplier.LinkToBranch)
+				suppliers.DELETE("/:id/branches/:branchId", h.Supplier.UnlinkFromBranch)
+				suppliers.GET("/:id/branches", h.Supplier.GetLinkedBranches)
 			}
 
 			purchaseOrders := admin.Group("/purchase-orders")
 			{
-				purchaseOrders.GET("", h.PurchaseOrder.List)
-				purchaseOrders.GET("/:id", h.PurchaseOrder.GetByID)
-				purchaseOrders.POST("", h.PurchaseOrder.Create)
 				purchaseOrders.PUT("/:id/receive", h.PurchaseOrder.Receive)
 				purchaseOrders.DELETE("/:id", h.PurchaseOrder.Delete)
 			}

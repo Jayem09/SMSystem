@@ -35,21 +35,26 @@ type purchaseOrderInput struct {
 	Items      []purchaseOrderItemInput `json:"items" binding:"required,min=1,dive"`
 }
 
-
 func (h *PurchaseOrderHandler) List(c *gin.Context) {
-	var orders []models.PurchaseOrder
-	if err := database.DB.
+	branchID, _ := GetUintFromContext(c, "branchID")
+
+	query := database.DB.
 		Preload("Supplier").
 		Preload("User").
 		Preload("Items.Product").
-		Order("created_at DESC").
-		Find(&orders).Error; err != nil {
+		Order("created_at DESC")
+
+	if branchID > 0 {
+		query = query.Where("branch_id = ?", branchID)
+	}
+
+	var orders []models.PurchaseOrder
+	if err := query.Find(&orders).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch purchase orders"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"purchase_orders": orders})
 }
-
 
 func (h *PurchaseOrderHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -70,7 +75,6 @@ func (h *PurchaseOrderHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"purchase_order": po})
 }
 
-
 func (h *PurchaseOrderHandler) Create(c *gin.Context) {
 	var input purchaseOrderInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -78,17 +82,15 @@ func (h *PurchaseOrderHandler) Create(c *gin.Context) {
 		return
 	}
 
-	
 	orderDate, err := time.Parse("2006-01-02", input.OrderDate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order date format. Use YYYY-MM-DD"})
 		return
 	}
 
-	
 	userID, _ := c.Get("userID")
+	branchID, _ := GetUintFromContext(c, "branchID")
 
-	
 	var totalCost float64
 	var items []models.PurchaseOrderItem
 	for _, item := range input.Items {
@@ -105,6 +107,7 @@ func (h *PurchaseOrderHandler) Create(c *gin.Context) {
 	po := models.PurchaseOrder{
 		SupplierID: input.SupplierID,
 		UserID:     userID.(uint),
+		BranchID:   branchID,
 		Status:     "pending",
 		TotalCost:  totalCost,
 		OrderDate:  orderDate,
@@ -117,14 +120,12 @@ func (h *PurchaseOrderHandler) Create(c *gin.Context) {
 		return
 	}
 
-	
 	database.DB.Preload("Supplier").Preload("User").Preload("Items.Product").First(&po, po.ID)
 
 	h.LogService.Record(userID.(uint), "CREATE", "Purchase Order", strconv.Itoa(int(po.ID)), fmt.Sprintf("Created PO to supplier #%d", po.SupplierID), c.ClientIP())
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Purchase order created", "purchase_order": po})
 }
-
 
 func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -149,10 +150,8 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 		return
 	}
 
-	
 	tx := database.DB.Begin()
 
-	
 	var receiveInput struct {
 		PONumber string `json:"po_number"`
 	}
@@ -161,13 +160,12 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 	}
 	fmt.Printf("Purchase Order Receive payload: po_number='%s'\n", receiveInput.PONumber)
 
-	
 	branchIDValue, _ := c.Get("branchID")
 	userIDCtx, _ := c.Get("userID")
 	branchID := branchIDValue.(uint)
 
 	for _, item := range po.Items {
-		
+
 		if err := tx.Model(&models.Product{}).
 			Where("id = ?", item.ProductID).
 			Updates(map[string]interface{}{
@@ -179,7 +177,6 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 			return
 		}
 
-		
 		var warehouse models.Warehouse
 		whQuery := tx.Model(&models.Warehouse{})
 		if branchID != 0 {
@@ -226,7 +223,6 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 		}
 	}
 
-	
 	now := time.Now()
 	po.Status = "received"
 	po.ReceivedDate = &now
@@ -239,7 +235,6 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 
 	tx.Commit()
 
-	
 	database.DB.Preload("Supplier").Preload("User").Preload("Items.Product").First(&po, po.ID)
 
 	userIDValue, _ := c.Get("userID")
@@ -249,7 +244,6 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Purchase order received. Stock updated.", "purchase_order": po})
 }
-
 
 func (h *PurchaseOrderHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -269,7 +263,6 @@ func (h *PurchaseOrderHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	
 	database.DB.Where("purchase_order_id = ?", id).Delete(&models.PurchaseOrderItem{})
 	database.DB.Delete(&po)
 
