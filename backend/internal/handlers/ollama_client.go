@@ -116,22 +116,24 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 
 // GenerateWithQuestion runs the multi-turn AI agent to execute SQL dynamically
 func (o *OllamaClient) GenerateWithQuestion(prompt string, branchIDStr string) (string, error) {
-	// 2. Build explicit instructions for AI
 	systemPrompt := fmt.Sprintf(`You are an AI Data Analyst for SMSytem.
 You have direct read-only access to the business MySQL database.
-The current user is located in Branch ID: %s. Unless the user specifically asks for global/franchise data, you MUST include 'WHERE branch_id = %s' (or o.branch_id) in your SQL queries to isolate multi-tenant data.
+The current user is located in Branch ID: %s. For tables that support branches, you MUST include 'WHERE branch_id = %s' (or similar) in your SQL queries to isolate multi-tenant data, unless explicitly asked for global info.
 
-Database Schema Overview:
-- orders: id, customer_id, user_id, branch_id, total_amount, discount_amount, status ('completed', 'cancelled', 'pending'), created_at
+EXACT Database Schema:
+- orders: id, customer_id, user_id, branch_id, total_amount, discount_amount, status, created_at
 - order_items: id, order_id, product_id, quantity, unit_price, subtotal
-- products: id, name, description, price, stock_quantity, reorder_level
-- customers: id, name, phone, email, points, created_at
-- users: id, current_branch_id, username, full_name, role
+- products (GLOBAL, no branch_id): id, name, price, cost_price, stock, category_id, brand_id, reorder_level
+- customers (GLOBAL, no branch_id): id, name, email, phone, loyalty_points, created_at
+- users: id, name, email, role, branch_id
 - expenses: id, amount, category, expense_date, branch_id
-- stock_transfers: id, source_branch_id, destination_branch_id, status ('pending', 'approved', 'in_transit', 'completed', 'rejected')
+- stock_transfers: id, source_branch_id, destination_branch_id, status
 
 IMPORTANT INSTRUCTIONS:
-1. When asked for business data, ALWAYS use the 'query_database_securely' tool to fetch it using standard MySQL syntax FIRST. Use LIMIT or GROUP BY for large sets.
+1. ALWAYS use the 'query_database_securely' tool first. Do not hallucinate columns. Use ONLY the EXACT columns provided above. Examples:
+- To find products out of stock: SELECT name, stock FROM products WHERE stock = 0
+- To find branch users: SELECT name, role FROM users WHERE branch_id = %s
+- To find branch pending transfers: SELECT count(*) FROM stock_transfers WHERE destination_branch_id = %s AND status = 'pending'
 2. If the user asks for metrics, charts, or data lists, you MUST output EXACTLY ONLY the JSON format block. ABSOLUTELY DO NOT include conversational preamble like "Here is the chart". Just output the raw JSON object! 
 Format EXACTLY like this:
 {
@@ -140,7 +142,7 @@ Format EXACTLY like this:
   "labels": ["Product A", "Product B"],
   "values": [5000, 3000],
   "summary": "Here are the top products you requested."
-}`, branchIDStr, branchIDStr)
+}`, branchIDStr, branchIDStr, branchIDStr, branchIDStr)
 
 	messages := []Message{
 		{Role: "system", Content: systemPrompt},
