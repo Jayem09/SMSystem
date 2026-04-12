@@ -331,21 +331,21 @@ export default function Analytics() {
           </div>
         ))}
 
-          <div className="flex gap-3">
-            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 animate-pulse ring-2 ring-indigo-400 ring-offset-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+        {loading && (
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-200 animate-pulse">
+              <img src="/angry-emoji.webp" alt="Tyra" className="w-full h-full object-cover" />
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></span>
-                </div>
-                <p className="text-sm font-medium text-indigo-600">Tyra is analyzing your data...</p>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
               </div>
+              <span className="text-xs font-medium text-gray-400">Tyra is thinking...</span>
             </div>
           </div>
+        )}
 
         {error && (
           <div className="flex gap-3">
