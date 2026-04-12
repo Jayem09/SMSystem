@@ -54,7 +54,7 @@ type ToolCall struct {
 	Function ToolCallFunction `json:"function"`
 }
 
-type AIRequest struct {
+type GeminiRequest struct {
 	Model       string    `json:"model"`
 	Messages    []Message `json:"messages"`
 	Tools       []Tool    `json:"tools,omitempty"`
@@ -71,7 +71,7 @@ type Message struct {
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
 }
 
-type AIResponse struct {
+type GeminiResponse struct {
 	Choices []struct {
 		Message Message `json:"message"`
 	} `json:"choices"`
@@ -197,7 +197,7 @@ Format EXACTLY like this:
 	// Multi-turn loop
 	maxTurns := 3
 	for turn := 0; turn < maxTurns; turn++ {
-		reqBody := AIRequest{
+		reqBody := GeminiRequest{
 			Model:       "gemini-1.5-flash",
 			Messages:    messages,
 			Tools:       tools,
@@ -230,7 +230,7 @@ Format EXACTLY like this:
 			return "", fmt.Errorf("Gemini returned status %d", resp.StatusCode)
 		}
 
-		var aiResp AIResponse
+		var aiResp GeminiResponse
 		if err := json.NewDecoder(resp.Body).Decode(&aiResp); err != nil {
 			resp.Body.Close()
 			return "", err
