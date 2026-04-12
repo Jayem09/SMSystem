@@ -198,7 +198,7 @@ Format EXACTLY like this:
 	maxTurns := 3
 	for turn := 0; turn < maxTurns; turn++ {
 		reqBody := GroqRequest{
-			Model:       "llama-3.3-70b-versatile",
+			Model:       "llama-3.1-8b-instant",
 			Messages:    messages,
 			Tools:       tools,
 			ToolChoice:  "auto",
