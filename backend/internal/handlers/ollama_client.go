@@ -78,21 +78,27 @@ type GroqResponse struct {
 }
 
 func executeSecureSQL(query string) (string, error) {
+	fmt.Printf("\n==============================\n")
+	fmt.Printf("[AI SQL TOOL] Incoming Query: %s\n", query)
+	
 	query = strings.TrimSpace(query)
 	query = strings.TrimSuffix(query, ";")
 	upperQuery := strings.ToUpper(query)
 
 	if !strings.HasPrefix(upperQuery, "SELECT") {
+		fmt.Printf("[AI SQL TOOL] BLOCKED: Not a SELECT statement\n")
 		return "", fmt.Errorf("security policy violation: only SELECT statements are allowed")
 	}
 
 	if strings.Contains(upperQuery, ";") {
+		fmt.Printf("[AI SQL TOOL] BLOCKED: Multiple statements detected (;)\n")
 		return "", fmt.Errorf("security policy violation: multiple statements detected")
 	}
 
 	blockedKeywords := []string{" DROP ", " DELETE ", " UPDATE ", " INSERT ", " ALTER ", " TRUNCATE ", " REPLACE ", " GRANT ", " CREATE "}
 	for _, kw := range blockedKeywords {
 		if strings.Contains(" "+upperQuery+" ", kw) { // Add padding to check complete words safely
+			fmt.Printf("[AI SQL TOOL] BLOCKED: Forbidden keyword %s\n", kw)
 			return "", fmt.Errorf("security policy violation: query contains forbidden keyword '%s'", strings.TrimSpace(kw))
 		}
 	}
@@ -100,8 +106,12 @@ func executeSecureSQL(query string) (string, error) {
 	db := database.DB
 	var results []map[string]interface{}
 	if err := db.Raw(query).Scan(&results).Error; err != nil {
+		fmt.Printf("[AI SQL TOOL] ERROR: %v\n", err)
 		return "", fmt.Errorf("database query error: %v", err)
 	}
+
+	fmt.Printf("[AI SQL TOOL] SUCCESS: Retrieved %d rows\n", len(results))
+	fmt.Printf("==============================\n\n")
 
 	if len(results) == 0 {
 		return "[]", nil
