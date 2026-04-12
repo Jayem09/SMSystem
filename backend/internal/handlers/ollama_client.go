@@ -54,27 +54,48 @@ type ToolCall struct {
 	Function ToolCallFunction `json:"function"`
 }
 
-type GeminiRequest struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	Tools       []Tool    `json:"tools,omitempty"`
-	ToolChoice  string    `json:"tool_choice,omitempty"`
-	Temperature float64   `json:"temperature"`
-	MaxTokens   int       `json:"max_tokens"`
+type GeminiNativeRequest struct {
+	Contents []NativeContent `json:"contents"`
+	Tools    []NativeTool    `json:"tools,omitempty"`
 }
 
-type Message struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content"`
-	Name       string     `json:"name,omitempty"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+type NativeContent struct {
+	Role  string       `json:"role"`
+	Parts []NativePart `json:"parts"`
 }
 
-type GeminiResponse struct {
-	Choices []struct {
-		Message Message `json:"message"`
-	} `json:"choices"`
+type NativePart struct {
+	Text             string              `json:"text,omitempty"`
+	FunctionCall     *NativeFunctionCall `json:"functionCall,omitempty"`
+	FunctionResponse *NativeFunctionResp `json:"functionResponse,omitempty"`
+}
+
+type NativeFunctionCall struct {
+	Name string                 `json:"name"`
+	Args map[string]interface{} `json:"args"`
+}
+
+type NativeFunctionResp struct {
+	Name     string                 `json:"name"`
+	Response map[string]interface{} `json:"response"`
+}
+
+type NativeTool struct {
+	FunctionDeclarations []NativeFuncDecl `json:"functionDeclarations"`
+}
+
+type NativeFuncDecl struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Parameters  map[string]interface{} `json:"parameters"`
+}
+
+type GeminiNativeResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []NativePart `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
 }
 
 func executeSecureSQL(query string) (string, error) {
@@ -129,7 +150,7 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 	return fmt.Sprintf("%d", branchID)
 }
 
-// GenerateWithQuestion runs the multi-turn AI agent to execute SQL dynamically
+// GenerateWithQuestion runs the multi-turn Native Gemini AI agent to execute SQL dynamically
 func (o *OllamaClient) GenerateWithQuestion(prompt string, branchIDStr string) (string, error) {
 	var branchConstraint string
 	if branchIDStr == "0" {
@@ -167,26 +188,34 @@ Format EXACTLY like this:
 }
 4. If the user asks for a simple LIST or a general question, DO NOT output JSON. Write the answer naturally in plain English based ONLY on the SQL data.`, branchConstraint)
 
-	messages := []Message{
-		{Role: "system", Content: systemPrompt},
-		{Role: "user", Content: prompt},
+	// In Native Gemini, the system prompt goes in the first user message or a physical system instruction
+	// For simplicity, we'll prefix it to the first user message or use it as a standalone user content
+	contents := []NativeContent{
+		{
+			Role: "user",
+			Parts: []NativePart{
+				{Text: "System Instructions: " + systemPrompt},
+				{Text: "User Question: " + prompt},
+			},
+		},
 	}
 
-	tools := []Tool{
+	tools := []NativeTool{
 		{
-			Type: "function",
-			Function: ToolFunction{
-				Name:        "query_database_securely",
-				Description: "Run a secure, READ-ONLY MySQL SELECT query to fetch data from the SMSytem database. Remember to filter by branch_id if appropriate.",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"sql_query": map[string]interface{}{
-							"type":        "string",
-							"description": "The exact MySQL SELECT statement.",
+			FunctionDeclarations: []NativeFuncDecl{
+				{
+					Name:        "query_database_securely",
+					Description: "Run a secure, READ-ONLY MySQL SELECT query to fetch data from the SMSytem database. Remember to filter by branch_id if appropriate.",
+					Parameters: map[string]interface{}{
+						"type": "OBJECT",
+						"properties": map[string]interface{}{
+							"sql_query": map[string]interface{}{
+								"type":        "STRING",
+								"description": "The exact MySQL SELECT statement.",
+							},
 						},
+						"required": []string{"sql_query"},
 					},
-					"required": []string{"sql_query"},
 				},
 			},
 		},
@@ -195,15 +224,11 @@ Format EXACTLY like this:
 	apiKey := os.Getenv("GEMINI_API_KEY")
 
 	// Multi-turn loop
-	maxTurns := 3
+	maxTurns := 4
 	for turn := 0; turn < maxTurns; turn++ {
-		reqBody := GeminiRequest{
-			Model:       "gemini-1.5-flash",
-			Messages:    messages,
-			Tools:       tools,
-			ToolChoice:  "auto",
-			Temperature: 0.1,
-			MaxTokens:   500,
+		reqBody := GeminiNativeRequest{
+			Contents: contents,
+			Tools:    tools,
 		}
 
 		jsonData, err := json.Marshal(reqBody)
@@ -211,65 +236,93 @@ Format EXACTLY like this:
 			return "", err
 		}
 
-		client := &http.Client{Timeout: 15 * time.Second}
-		// Using Gemini's OpenAI-compatible endpoint with API key as query parameter for maximum stability
-		apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions?key=%s", apiKey)
+		client := &http.Client{Timeout: 30 * time.Second}
+		// Native generateContent URL
+		apiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 		if err != nil {
 			return "", err
 		}
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("x-goog-api-key", apiKey)
 
+		fmt.Printf("[Turn %d] Sending request to Native Gemini...\n", turn)
 		resp, err := client.Do(req)
 		if err != nil {
-			return "", fmt.Errorf("failed to connect to Gemini: %v", err)
+			return "", fmt.Errorf("failed to connect to Gemini Native: %v", err)
 		}
 
 		if resp.StatusCode != http.StatusOK {
+			var bodyBytes []byte
+			if resp.Body != nil {
+				bodyBytes, _ = json.Marshal(resp.Body) // Placeholder for logs
+			}
 			resp.Body.Close()
-			return "", fmt.Errorf("Gemini returned status %d", resp.StatusCode)
+			return "", fmt.Errorf("Gemini Native returned status %d. Error body: %s", resp.StatusCode, string(bodyBytes))
 		}
 
-		var aiResp GeminiResponse
+		var aiResp GeminiNativeResponse
 		if err := json.NewDecoder(resp.Body).Decode(&aiResp); err != nil {
 			resp.Body.Close()
 			return "", err
 		}
 		resp.Body.Close()
 
-		if len(aiResp.Choices) == 0 {
-			return "", fmt.Errorf("no response from AI")
+		if len(aiResp.Candidates) == 0 {
+			return "", fmt.Errorf("no candidates in Gemini response")
 		}
 
-		responseMessage := aiResp.Choices[0].Message
-		messages = append(messages, responseMessage)
+		responseContent := aiResp.Candidates[0].Content
+		contents = append(contents, NativeContent{
+			Role:  "model",
+			Parts: responseContent.Parts,
+		})
 
-		// Check if AI wants to use a tool
-		if len(responseMessage.ToolCalls) > 0 {
-			for _, toolCall := range responseMessage.ToolCalls {
-				if toolCall.Function.Name == "query_database_securely" {
-					var args map[string]string
-					json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
-					
-					sqlQuery := args["sql_query"]
-					queryResult, err := executeSecureSQL(sqlQuery)
-					if err != nil {
-						queryResult = fmt.Sprintf("Error executing SQL: %v", err)
+		// Check for Function Call
+		var foundToolUse bool
+		for _, part := range responseContent.Parts {
+			if part.FunctionCall != nil {
+				foundToolUse = true
+				if part.FunctionCall.Name == "query_database_securely" {
+					sqlQuery, ok := part.FunctionCall.Args["sql_query"].(string)
+					var resultStr string
+					var execErr error
+					if !ok {
+						resultStr = "Error: sql_query argument missing"
+					} else {
+						resultStr, execErr = executeSecureSQL(sqlQuery)
+						if execErr != nil {
+							resultStr = fmt.Sprintf("Error executing SQL: %v", execErr)
+						}
 					}
 
-					messages = append(messages, Message{
-						Role:       "tool",
-						ToolCallID: toolCall.ID,
-						Name:       toolCall.Function.Name,
-						Content:    queryResult,
+					// Append Function Response to contents
+					contents = append(contents, NativeContent{
+						Role: "user", // In native REST, function results are often sent back as 'user' or 'function' role depending on SDK wrapper logic, but 'user' with functionResponse works in REST v1beta
+						Parts: []NativePart{
+							{
+								FunctionResponse: &NativeFunctionResp{
+									Name:     "query_database_securely",
+									Response: map[string]interface{}{"result": resultStr},
+								},
+							},
+						},
 					})
 				}
 			}
-			continue // Send tool output back to Groq
 		}
 
-		return responseMessage.Content, nil
+		if !foundToolUse {
+			// No more tool calls, return the last text part
+			finalText := ""
+			for _, part := range responseContent.Parts {
+				if part.Text != "" {
+					finalText += part.Text
+				}
+			}
+			return finalText, nil
+		}
 	}
 
-	return "", fmt.Errorf("AI loop exhausted")
+	return "", fmt.Errorf("max turns reached in AI loop")
 }
