@@ -132,16 +132,15 @@ Database Schema Overview:
 
 IMPORTANT INSTRUCTIONS:
 1. When asked for business data, ALWAYS use the 'query_database_securely' tool to fetch it using standard MySQL syntax FIRST. Use LIMIT or GROUP BY for large sets.
-2. If the user asks for charts or data lists, use Recharts JSON format blocks exactly like this:
-`+"```json\n"+`
+2. If the user asks for metrics, charts, or data lists, you MUST output EXACTLY ONLY the JSON format block. ABSOLUTELY DO NOT include conversational preamble like "Here is the chart". Just output the raw JSON object! 
+Format EXACTLY like this:
 {
   "chart_type": "bar",
   "title": "Top Selling Products",
   "labels": ["Product A", "Product B"],
   "values": [5000, 3000],
   "summary": "Here are the top products you requested."
-}
-`+"\n```", branchIDStr, branchIDStr)
+}`, branchIDStr, branchIDStr)
 
 	messages := []Message{
 		{Role: "system", Content: systemPrompt},
