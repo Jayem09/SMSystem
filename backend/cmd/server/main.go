@@ -83,6 +83,12 @@ func main() {
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+
+	// Debug - add route BEFORE everything else
+	router.GET("/api/firsttest", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "first test works"})
+	})
+
 	router.Use(gin.Recovery())
 	router.Use(middleware.MetricsMiddleware())
 
@@ -107,9 +113,13 @@ func main() {
 
 	routes.Setup(router, cfg, h)
 
-	// Debug route added in main.go directly
-	router.GET("/api/directtest", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "direct test works"})
+	// Debug - print all registered routes
+	router.GET("/api/debugroutes", func(c *gin.Context) {
+		var routes []string
+		for _, route := range router.Routes() {
+			routes = append(routes, route.Path)
+		}
+		c.JSON(200, gin.H{"routes": routes})
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
