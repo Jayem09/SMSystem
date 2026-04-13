@@ -18,6 +18,7 @@ func NewPromoHandler(emailSvc *services.EmailService) *PromoHandler {
 type PromoEmailRequest struct {
 	Recipients []Recipient `json:"recipients" binding:"required"`
 	Template   string      `json:"template" binding:"required"`
+	Subject    string      `json:"subject"`
 	PromoCode  string      `json:"promo_code" binding:"required"`
 	Discount   string      `json:"discount"`
 	ValidUntil string      `json:"valid_until"`
@@ -59,7 +60,7 @@ func (h *PromoHandler) SendPromoEmail(c *gin.Context) {
 			name = "Valued Customer"
 		}
 
-		err := h.EmailService.SendPromoEmail(r.Email, name, req.PromoCode, req.Discount, req.Template, req.ValidUntil, req.Details)
+		err := h.EmailService.SendPromoEmail(r.Email, name, req.PromoCode, req.Subject, req.Discount, req.Template, req.ValidUntil, req.Details)
 		if err != nil {
 			failedCount++
 			failedEmails = append(failedEmails, r.Email)
