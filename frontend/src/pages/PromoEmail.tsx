@@ -58,8 +58,8 @@ export default function PromoEmail() {
       ]);
 
       // Filter only those with emails
-      const customersData = (customersRes.data.customers || []) as Customer[];
-      const suppliersData = (suppliersRes.data.suppliers || []) as Supplier[];
+      const customersData = ((customersRes.data as any)?.customers || customersRes.data || []) as Customer[];
+      const suppliersData = ((suppliersRes.data as any)?.suppliers || suppliersRes.data || []) as Supplier[];
 
       setCustomers(customersData.filter(c => c.email?.trim()));
       setSuppliers(suppliersData.filter(s => s.email?.trim()));
@@ -139,7 +139,7 @@ export default function PromoEmail() {
       });
       
       console.log('Response:', res);
-      setResult(res.data);
+      setResult(res.data as { success: number; failed: number; failed_emails: string[] });
     } catch (err: unknown) {
       console.error('Send error:', err);
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
