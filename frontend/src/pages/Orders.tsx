@@ -43,7 +43,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Orders() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'purchasing' || user?.role === 'purchaser';
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,21 +51,75 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
 
-
+  // Simple test to see if we're getting data
+  useEffect(() => {
+    console.log('Orders component mounted');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('user:', user);
+    
+    if (isAuthenticated) {
+      // Test direct fetch
+      api.get('/api/orders').then(res => {
+        console.log('Direct API test:', res);
+      }).catch(err => {
+        console.log('Direct API test error:', err);
+      });
+    }
+  }, [isAuthenticated]);
 
   const fetchOrders = async () => {
+    console.log('Fetching orders...');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('user:', user);
+    
+    if (!isAuthenticated) {
+      setError('Please log in to view orders');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      console.log('Making API call to /api/orders');
       const res = await api.get('/api/orders');
-      setOrders(res.data.orders);
+      console.log('API response:', res);
+      // Check if the response has an error (API-level error)
+      if (res.data && typeof res.data === 'object' && 'error' in res.data) {
+        throw new Error((res.data as { error?: string }).error || 'API error');
+      }
+      // Check if we got the expected orders data
+      if (res.data && typeof res.data === 'object' && 'orders' in res.data) {
+        setOrders((res.data as { orders: Order[] }).orders);
+        setError(''); // Clear any previous errors
+        console.log('Orders set:', (res.data as { orders: Order[] }).orders);
+      } else {
+        throw new Error('Unexpected response format');
+      }
     } catch (err: unknown) {
       console.error('Failed to fetch orders', err);
-      setError('Failed to load orders');
+      // Handle specific error cases
+      if (err instanceof Error) {
+        if (err.message.includes('401') || err.message.includes('Invalid or expired token')) {
+          setError('Your session has expired. Please log in again.');
+        } else if (err.message.includes('Authorization header required')) {
+          setError('Please log in to view orders');
+        } else {
+          setError(err.message || 'Failed to load orders. Please try again later.');
+        }
+      } else {
+        setError('Failed to load orders. Please try again later.');
+      }
     } finally {
       setLoading(false);
+      console.log('Loading finished');
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  // Fetch orders when component mounts or when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrders();
+    }
+  }, [isAuthenticated]);
 
 
 
