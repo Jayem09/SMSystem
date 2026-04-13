@@ -59,7 +59,7 @@ func (h *PromoHandler) SendPromoEmail(c *gin.Context) {
 			name = "Valued Customer"
 		}
 
-		err := h.EmailService.SendPromoEmail(r.Email, name, req.PromoCode, req.Discount)
+		err := h.EmailService.SendPromoEmail(r.Email, name, req.PromoCode, req.Discount, req.Template, req.ValidUntil, req.Details)
 		if err != nil {
 			failedCount++
 			failedEmails = append(failedEmails, r.Email)

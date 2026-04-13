@@ -11,10 +11,7 @@ require (
 	gorm.io/gorm v1.25.12
 )
 
-require (
-	github.com/sendgrid/rest v2.6.9+incompatible // indirect
-	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
-)
+
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect

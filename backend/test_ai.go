@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"smsystem-backend/internal/handlers"
-	"os"
 )
 
 func main() {

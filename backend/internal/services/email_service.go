@@ -270,8 +270,8 @@ func (e *EmailService) SendTransferNotification(toEmail, branchName, refNumber, 
 	return nil
 }
 
-// SendPromoEmail sends a promotional email for tire sales
-func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount string) error {
+// SendPromoEmail sends a promotional email for tire sales with dynamic templates
+func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount, template, validUntil, details string) error {
 	if e.APIKey == "" {
 		log.Printf("[EMAIL] BREVO_API_KEY not set, skipping promo email to %s", toEmail)
 		return nil
@@ -281,24 +281,48 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
 		return nil
 	}
 
-	subject := "🔥 Limited Time Offer! Get Premium Tires at Special Prices"
+	// Dynamic styling based on template
+	headerGradient := "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" // Default Purple
+	heroGradient := "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+	heroEmoji := "🛞"
+	heroTitle := "SPECIAL OFFER"
+
+	switch template {
+	case "discount":
+		headerGradient = "linear-gradient(135deg, #f6d365 0%, #fda085 100%)" // Gold/Orange
+		heroEmoji = "💰"
+		heroTitle = "EXCLUSIVE DISCOUNT"
+	case "seasonal":
+		headerGradient = "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)" // Green/Blue
+		heroEmoji = "🎉"
+		heroTitle = "SEASONAL PROMO"
+	}
+
+	if discount == "" {
+		discount = "Special Offer"
+	}
+	if validUntil == "" {
+		validUntil = "End of this month"
+	}
+
+	subject := fmt.Sprintf("🔥 %s: %s!", heroTitle, discount)
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Special Tire Offer</title>
+  <title>%s</title>
 </head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#1a1a2e;">
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f4f7f6;">
   <table width="100%%" cellpadding="0" cellspacing="0">
     <tr>
       <td align="center" style="padding:40px 20px;">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.1);">
           <!-- Header with Logo -->
           <tr>
-            <td style="background:linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);padding:30px;text-align:center;">
-              <h1 style="color:#ffffff;font-size:28px;margin:0;font-weight:800;">🛞 SMSYSTEM</h1>
+            <td style="background:%s;padding:30px;text-align:center;">
+              <h1 style="color:#ffffff;font-size:28px;margin:0;font-weight:800;">%s SMSYSTEM</h1>
               <p style="color:rgba(255,255,255,0.9);margin:10px 0 0;font-size:14px;">Premium Tire Solutions</p>
             </td>
           </tr>
@@ -306,10 +330,10 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
           <!-- Hero Banner -->
           <tr>
             <td style="padding:0;position:relative;">
-              <div style="background:linear-gradient(135deg, #f093fb 0%%, #f5576c 100%%);padding:40px 30px;text-align:center;">
-                <p style="color:#ffffff;font-size:14px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:2px;">Special Offer</p>
-                <h2 style="color:#ffffff;font-size:36px;margin:15px 0;font-weight:800;">BUY 4 GET 1 FREE!</h2>
-                <p style="color:rgba(255,255,255,0.9);font-size:16px;margin:0;">On all premium tire brands</p>
+              <div style="background:%s;padding:40px 30px;text-align:center;">
+                <p style="color:#ffffff;font-size:14px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:2px;">%s</p>
+                <h2 style="color:#ffffff;font-size:36px;margin:15px 0;font-weight:800;text-transform:uppercase;">%s</h2>
+                <p style="color:rgba(255,255,255,0.9);font-size:16px;margin:0;">Limited time offer for you</p>
               </div>
             </td>
           </tr>
@@ -321,8 +345,10 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
                 Hello <strong>%s</strong>! 👋
               </p>
               <p style="color:#666666;font-size:15px;margin:20px 0;line-height:1.6;">
-                We have an exclusive offer just for you! Get premium quality tires at unbeatable prices. Whether you need tires for your car, truck, or SUV - we've got you covered with top brands!
+                We have an exclusive offer just for you! Get quality tires and services at unbeatable prices. Whether you need tires for your car, truck, or SUV - we've got you covered with top brands!
               </p>
+
+              %s
               
               <!-- Features -->
               <table width="100%%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
@@ -346,7 +372,7 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
               <div style="background:#f8f9fa;border:2px dashed #667eea;border-radius:12px;padding:25px;text-align:center;margin:30px 0;">
                 <p style="color:#667eea;font-size:14px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:1px;">Use Code</p>
                 <p style="color:#333;font-size:32px;font-weight:800;margin:10px 0;font-family:monospace;letter-spacing:4px;">%s</p>
-                <p style="color:#999;font-size:12px;margin:0;">Valid until end of this month</p>
+                <p style="color:#999;font-size:12px;margin:0;">Valid until %s</p>
               </div>
               
               <!-- CTA Button -->
@@ -354,7 +380,7 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
                 <tr>
                   <td align="center">
                     <a href="https://smstyredepot.com" style="display:inline-block;background:linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);color:#ffffff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:50px;text-decoration:none;text-transform:uppercase;letter-spacing:1px;">
-                      Shop Now →
+                      Claim Offer Now →
                     </a>
                   </td>
                 </tr>
@@ -411,14 +437,16 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
           </tr>
         </table>
         
-        <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:20px 0 0;text-align:center;">
-          This email was sent to %s because you're a valued customer of SMSystem.
+        <p style="color:rgba(0,0,0,0.4);font-size:11px;margin:20px 0 0;text-align:center;">
+          This email was sent to %s because you're a valued contact of SMSystem.
         </p>
       </td>
     </tr>
   </table>
 </body>
-</html>`, toName, promoCode, toEmail)
+</html>`,
+		heroTitle, headerGradient, heroEmoji, heroGradient, heroTitle, discount,
+		toName, detailsSection(details), promoCode, validUntil, toEmail)
 
 	err := e.Send(toEmail, toName, subject, html)
 	if err != nil {
@@ -428,4 +456,13 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount strin
 
 	log.Printf("[EMAIL] Promo email sent to %s with code %s", toEmail, promoCode)
 	return nil
+}
+
+func detailsSection(details string) string {
+	if details == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<div style="margin:20px 0;padding:15px;background:#fff9c4;border-left:4px solid #fbc02d;color:#5f4b00;font-size:14px;border-radius:4px;">
+                <strong>Special Note:</strong><br/>%s
+              </div>`, details)
 }

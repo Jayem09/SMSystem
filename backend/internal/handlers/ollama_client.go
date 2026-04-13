@@ -155,6 +155,10 @@ func (o *OllamaClient) GetBusinessContext(branchID uint) string {
 // GenerateWithQuestion runs the multi-turn Native Gemini AI agent to execute SQL dynamically
 func (o *OllamaClient) GenerateWithQuestion(prompt string, branchIDStr string) (string, error) {
 	var branchConstraint string
+	var err error
+	var req *http.Request
+	var resp *http.Response
+	var jsonData []byte
 	if branchIDStr == "0" {
 		branchConstraint = "The current user is a SUPER ADMIN viewing ALL FRANCHISE DATA globally. DO NOT filter any tables by branch_id. Fetch all data globally unless they ask for a specific branch."
 	} else {
@@ -233,7 +237,7 @@ Format EXACTLY like this:
 			Tools:    tools,
 		}
 
-		jsonData, err := json.Marshal(reqBody)
+		jsonData, err = json.Marshal(reqBody)
 		if err != nil {
 			return "", err
 		}
@@ -241,7 +245,7 @@ Format EXACTLY like this:
 		client := &http.Client{Timeout: 30 * time.Second}
 		// Native generateContent URL - Matching the exact model that worked in your curl
 		apiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
-		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+		req, err = http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 		if err != nil {
 			return "", err
 		}
@@ -249,7 +253,27 @@ Format EXACTLY like this:
 		req.Header.Set("x-goog-api-key", apiKey)
 
 		fmt.Printf("[Turn %d] Sending request to Native Gemini...\n", turn)
-		resp, err := client.Do(req)
+		
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			req, err = http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+			if err != nil {
+				return "", err
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("x-goog-api-key", apiKey)
+
+			resp, err = client.Do(req)
+			if err == nil && resp.StatusCode == 429 {
+				// Rate limit hit - wait and retry
+				resp.Body.Close()
+				fmt.Printf("Rate limit hit, retrying in %d seconds...\n", (i+1)*2)
+				time.Sleep(time.Duration((i+1)*2) * time.Second)
+				continue
+			}
+			break
+		}
+
 		if err != nil {
 			return "", fmt.Errorf("failed to connect to Gemini Native: %v", err)
 		}

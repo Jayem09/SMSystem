@@ -58,8 +58,8 @@ export default function PromoEmail() {
       ]);
 
       // Filter only those with emails
-      const customersData = ((customersRes.data as any)?.customers || customersRes.data || []) as Customer[];
-      const suppliersData = ((suppliersRes.data as any)?.suppliers || suppliersRes.data || []) as Supplier[];
+      const customersData = ((customersRes.data as any).customers || customersRes.data || []) as Customer[];
+      const suppliersData = ((suppliersRes.data as any).suppliers || suppliersRes.data || []) as Supplier[];
 
       setCustomers(customersData.filter(c => c.email?.trim()));
       setSuppliers(suppliersData.filter(s => s.email?.trim()));
@@ -128,7 +128,7 @@ export default function PromoEmail() {
         valid_until: validUntil,
         details,
       });
-      
+
       const res = await api.post('/api/promo/send', {
         recipients: selectedRecipients,
         template: selectedTemplate,
@@ -137,9 +137,9 @@ export default function PromoEmail() {
         valid_until: validUntil,
         details,
       });
-      
+
       console.log('Response:', res);
-      setResult(res.data as { success: number; failed: number; failed_emails: string[] });
+      setResult(res.data as any);
     } catch (err: unknown) {
       console.error('Send error:', err);
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
@@ -172,11 +172,10 @@ export default function PromoEmail() {
 
       {/* Result Alert */}
       {result && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-          result.failed === 0
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-        }`}>
+        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${result.failed === 0
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+          }`}>
           {result.failed === 0 ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -201,11 +200,10 @@ export default function PromoEmail() {
               {TEMPLATES.map((template) => (
                 <label
                   key={template.id}
-                  className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                    selectedTemplate === template.id
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${selectedTemplate === template.id
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <input
                     type="radio"
@@ -293,22 +291,20 @@ export default function PromoEmail() {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => { setRecipientType('customers'); setSelectAll(false); setSelectedRecipients([]); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  recipientType === 'customers'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${recipientType === 'customers'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'
+                  }`}
               >
                 <Users className="w-4 h-4" />
                 Customers ({customers.length})
               </button>
               <button
                 onClick={() => { setRecipientType('suppliers'); setSelectAll(false); setSelectedRecipients([]); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  recipientType === 'suppliers'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${recipientType === 'suppliers'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'
+                  }`}
               >
                 <Truck className="w-4 h-4" />
                 Suppliers ({suppliers.length})
@@ -366,11 +362,10 @@ export default function PromoEmail() {
           <button
             onClick={handleSend}
             disabled={sending || selectedRecipients.length === 0 || !promoCode.trim()}
-            className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-lg transition-all ${
-              sending || selectedRecipients.length === 0 || !promoCode.trim()
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700'
-                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg'
-            }`}
+            className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-lg transition-all ${sending || selectedRecipients.length === 0 || !promoCode.trim()
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700'
+              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg'
+              }`}
           >
             {sending ? (
               <>
@@ -386,9 +381,6 @@ export default function PromoEmail() {
           </button>
 
           {/* Info */}
-          <p className="text-xs text-gray-500 text-center">
-            📧 Powered by Brevo • Free 300 emails/day
-          </p>
         </div>
       </div>
     </div>
