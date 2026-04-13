@@ -270,7 +270,7 @@ func (e *EmailService) SendTransferNotification(toEmail, branchName, refNumber, 
 	return nil
 }
 
-// SendPromoEmail sends a promotional email for tire sales with dynamic templates
+// SendPromoEmail sends a promotional email for tire sales with a minimalist premium design
 func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount, template, validUntil, details string) error {
 	if e.APIKey == "" {
 		log.Printf("[EMAIL] BREVO_API_KEY not set, skipping promo email to %s", toEmail)
@@ -281,172 +281,141 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount, temp
 		return nil
 	}
 
-	// Dynamic styling based on template
-	headerGradient := "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" // Default Purple
-	heroGradient := "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
-	heroEmoji := "🛞"
-	heroTitle := "SPECIAL OFFER"
-
+	// Minimalist accent colors
+	accentColor := "#4f46e5" // Indigo (Default)
 	switch template {
 	case "discount":
-		headerGradient = "linear-gradient(135deg, #f6d365 0%, #fda085 100%)" // Gold/Orange
-		heroEmoji = "💰"
-		heroTitle = "EXCLUSIVE DISCOUNT"
+		accentColor = "#d97706" // Amber
 	case "seasonal":
-		headerGradient = "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)" // Green/Blue
-		heroEmoji = "🎉"
-		heroTitle = "SEASONAL PROMO"
+		accentColor = "#059669" // Emerald
 	}
 
 	if discount == "" {
 		discount = "Special Offer"
 	}
 	if validUntil == "" {
-		validUntil = "End of this month"
+		validUntil = "End of the month"
 	}
 
-	subject := fmt.Sprintf("🔥 %s: %s!", heroTitle, discount)
+	subject := fmt.Sprintf("Exclusive Offer: %s", discount)
+
+	// Note: Logo and Product images should be hosted on a public URL for real emails.
+	// Using placeholders for now in the backend logic.
+	logoURL := "http://168.144.46.137:8080/public/logo2.png" 
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>%s</title>
 </head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f4f7f6;">
-  <table width="100%%" cellpadding="0" cellspacing="0">
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#ffffff;color:#111827;">
+  <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;">
     <tr>
       <td align="center" style="padding:40px 20px;">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.1);">
-          <!-- Header with Logo -->
+        <table width="100%%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <!-- Top Accent Line -->
+          <tr><td height="4" style="background-color:%s;"></td></tr>
+          
+          <!-- Logo & Header -->
           <tr>
-            <td style="background:%s;padding:30px;text-align:center;">
-              <h1 style="color:#ffffff;font-size:28px;margin:0;font-weight:800;">%s SMSYSTEM</h1>
-              <p style="color:rgba(255,255,255,0.9);margin:10px 0 0;font-size:14px;">Premium Tire Solutions</p>
+            <td style="padding:40px 40px 20px;text-align:center;">
+              <img src="%s" alt="SMSystem Logo" style="height:40px;margin-bottom:16px;display:inline-block;">
+              <p style="margin:0;font-size:12px;font-weight:700;color:%s;text-transform:uppercase;letter-spacing:0.1em;">SMSystem Premium</p>
             </td>
           </tr>
           
-          <!-- Hero Banner -->
+          <!-- Hero Text -->
           <tr>
-            <td style="padding:0;position:relative;">
-              <div style="background:%s;padding:40px 30px;text-align:center;">
-                <p style="color:#ffffff;font-size:14px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:2px;">%s</p>
-                <h2 style="color:#ffffff;font-size:36px;margin:15px 0;font-weight:800;text-transform:uppercase;">%s</h2>
-                <p style="color:rgba(255,255,255,0.9);font-size:16px;margin:0;">Limited time offer for you</p>
-              </div>
+            <td style="padding:0 40px 40px;text-align:center;">
+              <h1 style="margin:0;font-size:32px;font-weight:800;letter-spacing:-0.025em;line-height:1.1;">%s</h1>
+              <p style="margin:16px 0 0;font-size:16px;color:#4b5563;line-height:1.5;">A special thank you for being a valued customer. Use this exclusive offer on your next purchase.</p>
             </td>
           </tr>
-          
-          <!-- Main Content -->
-          <tr>
-            <td style="padding:40px 30px;">
-              <p style="color:#333333;font-size:16px;margin:0;line-height:1.6;">
-                Hello <strong>%s</strong>! 👋
-              </p>
-              <p style="color:#666666;font-size:15px;margin:20px 0;line-height:1.6;">
-                We have an exclusive offer just for you! Get quality tires and services at unbeatable prices. Whether you need tires for your car, truck, or SUV - we've got you covered with top brands!
-              </p>
 
-              %s
-              
-              <!-- Features -->
-              <table width="100%%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
-                <tr>
-                  <td style="text-align:center;padding:15px;">
-                    <div style="width:60px;height:60px;background:#fff3e0;border-radius:50%%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;">🚚</div>
-                    <p style="color:#333;font-size:13px;font-weight:600;margin:0;">Free Delivery</p>
-                  </td>
-                  <td style="text-align:center;padding:15px;">
-                    <div style="width:60px;height:60px;background:#e8f5e9;border-radius:50%%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;">✓</div>
-                    <p style="color:#333;font-size:13px;font-weight:600;margin:0;">Quality Guaranteed</p>
-                  </td>
-                  <td style="text-align:center;padding:15px;">
-                    <div style="width:60px;height:60px;background:#e3f2fd;border-radius:50%%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;">🔧</div>
-                    <p style="color:#333;font-size:13px;font-weight:600;margin:0;">Free Installation</p>
-                  </td>
-                </tr>
-              </table>
-              
-              <!-- Discount Code Box -->
-              <div style="background:#f8f9fa;border:2px dashed #667eea;border-radius:12px;padding:25px;text-align:center;margin:30px 0;">
-                <p style="color:#667eea;font-size:14px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:1px;">Use Code</p>
-                <p style="color:#333;font-size:32px;font-weight:800;margin:10px 0;font-family:monospace;letter-spacing:4px;">%s</p>
-                <p style="color:#999;font-size:12px;margin:0;">Valid until %s</p>
+          <!-- Featured Selection -->
+          <tr>
+            <td style="padding:0 40px 40px;">
+                <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#111827;">Featured Collection</p>
+                <table width="100%%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td width="30%%" align="center" style="padding:8px;">
+                            <div style="background-color:#f8fafc;border-radius:8px;padding:12px;">
+                                <img src="https://via.placeholder.com/150?text=Michelin+Pilot" style="width:100%%;border-radius:4px;">
+                                <p style="margin:8px 0 0;font-size:11px;font-weight:600;">Michelin Pilot</p>
+                            </div>
+                        </td>
+                        <td width="30%%" align="center" style="padding:8px;">
+                            <div style="background-color:#f8fafc;border-radius:8px;padding:12px;">
+                                <img src="https://via.placeholder.com/150?text=Rugged+M/T" style="width:100%%;border-radius:4px;">
+                                <p style="margin:8px 0 0;font-size:11px;font-weight:600;">Rugged M/T</p>
+                            </div>
+                        </td>
+                        <td width="30%%" align="center" style="padding:8px;">
+                            <div style="background-color:#f8fafc;border-radius:8px;padding:12px;">
+                                <img src="https://via.placeholder.com/150?text=Sport+Alloy" style="width:100%%;border-radius:4px;">
+                                <p style="margin:8px 0 0;font-size:11px;font-weight:600;">Alloy Setup</p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+          </tr>
+
+          <!-- Custom Details Section -->
+          %s
+          
+          <!-- Promo Code Card -->
+          <tr>
+            <td style="padding:0 40px 40px;">
+              <div style="background-color:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;">
+                <p style="margin:0;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Your Promo Code</p>
+                <p style="margin:12px 0;font-size:32px;font-weight:800;color:#1e293b;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;letter-spacing:0.1em;">%s</p>
+                <div style="display:inline-block;padding:4px 12px;background-color:#f1f5f9;border-radius:1000px;">
+                  <p style="margin:0;font-size:12px;color:#475569;">Valid until %s</p>
+                </div>
               </div>
-              
-              <!-- CTA Button -->
-              <table width="100%%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <a href="https://smstyredepot.com" style="display:inline-block;background:linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);color:#ffffff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:50px;text-decoration:none;text-transform:uppercase;letter-spacing:1px;">
-                      Claim Offer Now →
-                    </a>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
           
-          <!-- Tire Categories -->
+          <!-- Shop Button -->
           <tr>
-            <td style="background:#f8f9fa;padding:30px;">
-              <p style="color:#333;font-size:14px;font-weight:700;margin:0 0 20px;text-align:center;text-transform:uppercase;letter-spacing:1px;">Popular Categories</p>
-              <table width="100%%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="padding:10px;">
-                    <div style="background:#fff;border-radius:12px;padding:15px;width:80px;">
-                      <p style="font-size:30px;margin:0;">🚗</p>
-                      <p style="color:#666;font-size:11px;margin:5px 0 0;">Car Tires</p>
-                    </div>
-                  </td>
-                  <td align="center" style="padding:10px;">
-                    <div style="background:#fff;border-radius:12px;padding:15px;width:80px;">
-                      <p style="font-size:30px;margin:0;">🚚</p>
-                      <p style="color:#666;font-size:11px;margin:5px 0 0;">Truck Tires</p>
-                    </div>
-                  </td>
-                  <td align="center" style="padding:10px;">
-                    <div style="background:#fff;border-radius:12px;padding:15px;width:80px;">
-                      <p style="font-size:30px;margin:0;">🏎️</p>
-                      <p style="color:#666;font-size:11px;margin:5px 0 0;">Sports</p>
-                    </div>
-                  </td>
-                  <td align="center" style="padding:10px;">
-                    <div style="background:#fff;border-radius:12px;padding:15px;width:80px;">
-                      <p style="font-size:30px;margin:0;">⛺</p>
-                      <p style="color:#666;font-size:11px;margin:5px 0 0;">AT/MT</p>
-                    </div>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding:0 40px 60px;text-align:center;">
+              <a href="https://smstyredepot.com" style="display:inline-block;background-color:#111827;color:#ffffff;padding:16px 32px;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none;">Shop Collection</a>
+              <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;">Free delivery on orders over ₱5,000</p>
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="background:#1a1a2e;padding:30px;text-align:center;">
-              <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0;">
-                📧 info@smstyredepot.com | 📞 +63 911-111-1111
-              </p>
-              <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:15px 0 0;">
-                © 2026 SMSystem. All rights reserved.<br>
-                Lipa City, Batangas, Philippines
-              </p>
+            <td style="padding:40px;background-color:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;font-size:14px;font-weight:600;color:#111827;">SMSystem Tire Depot</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">Lipa City, Batangas, Philippines</p>
+              
+              <!-- Social & Contact Links -->
+              <div style="margin:20px 0;">
+                <a href="https://www.facebook.com/SMSTyreDepotLipa.Official" style="display:inline-block;margin:0 10px;text-decoration:none;color:#111827;font-size:13px;font-weight:600;">Facebook</a>
+                <span style="color:#e5e7eb;">•</span>
+                <p style="display:inline-block;margin:0 10px;color:#111827;font-size:13px;font-weight:600;">0917-706-0025</p>
+                <span style="color:#e5e7eb;">•</span>
+                <a href="https://smstyredepot.com" style="display:inline-block;margin:0 10px;text-decoration:none;color:#111827;font-size:13px;font-weight:600;">Website</a>
+              </div>
+
+              <div style="margin:24px 0 0;padding-top:24px;border-top:1px solid #e5e7eb;">
+                <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.6;">
+                  This is an automated message intended for %s.<br/>
+                  Manage your preferences or unsubscribe at any time.
+                </p>
+              </div>
             </td>
           </tr>
         </table>
-        
-        <p style="color:rgba(0,0,0,0.4);font-size:11px;margin:20px 0 0;text-align:center;">
-          This email was sent to %s because you're a valued contact of SMSystem.
-        </p>
       </td>
     </tr>
   </table>
 </body>
 </html>`,
-		heroTitle, headerGradient, heroEmoji, heroGradient, heroTitle, discount,
-		toName, detailsSection(details), promoCode, validUntil, toEmail)
+		accentColor, logoURL, accentColor, discount, detailsSection(details), promoCode, validUntil, toEmail)
 
 	err := e.Send(toEmail, toName, subject, html)
 	if err != nil {
@@ -458,11 +427,16 @@ func (e *EmailService) SendPromoEmail(toEmail, toName, promoCode, discount, temp
 	return nil
 }
 
+
 func detailsSection(details string) string {
 	if details == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<div style="margin:20px 0;padding:15px;background:#fff9c4;border-left:4px solid #fbc02d;color:#5f4b00;font-size:14px;border-radius:4px;">
-                <strong>Special Note:</strong><br/>%s
-              </div>`, details)
+	return fmt.Sprintf(`<tr>
+            <td style="padding:0 40px 32px;">
+              <div style="border-left:2px solid #e5e7eb;padding-left:20px;">
+                <p style="margin:0;font-size:14px;font-style:italic;color:#4b5563;line-height:1.6;">"%s"</p>
+              </div>
+            </td>
+          </tr>`, details)
 }

@@ -48,33 +48,33 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
   // Build item rows
   const MAX_ROWS = 10;
   const items = order.items || [];
-  
+
   // Separate regular items and rewards
   const regularItems = items.filter(item => {
     const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
     const subtotal = item.subtotal ?? 0;
     return !(unitPrice === 0 && subtotal === 0);
   });
-  
+
   const rewardItems = items.filter(item => {
     const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
     const subtotal = item.subtotal ?? 0;
     return unitPrice === 0 && subtotal === 0;
   });
-  
+
   const discountAmount = order.discount_amount ?? 0;
   const unit = "PCS";
-  
+
   // Build rows: regular items first, then rewards, then discount
   let rowIndex = 0;
   let itemRows = '';
-  
+
   // Regular items
   regularItems.slice(0, MAX_ROWS).forEach((item) => {
     const unitPrice = item.unit_price ?? item.price ?? (item.quantity ? item.subtotal / item.quantity : 0);
     const subtotal = item.subtotal ?? 0;
     const baseTop = 2.35;
-    const rowHeight = 0.30; 
+    const rowHeight = 0.30;
     const topPos = baseTop + (rowIndex * rowHeight);
     itemRows += `
       <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">${item.quantity}</div>
@@ -85,12 +85,12 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
     `;
     rowIndex++;
   });
-  
+
   // Reward items
   rewardItems.slice(0, MAX_ROWS - rowIndex).forEach((item) => {
     const itemName = `${item.product?.name || ''} (REWARD)`;
     const baseTop = 2.35;
-    const rowHeight = 0.30; 
+    const rowHeight = 0.30;
     const topPos = baseTop + (rowIndex * rowHeight);
     itemRows += `
       <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">${item.quantity}</div>
@@ -101,11 +101,11 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
     `;
     rowIndex++;
   });
-  
+
   // Discount at the end
   if (discountAmount > 0 && rowIndex < MAX_ROWS) {
     const baseTop = 2.35;
-    const rowHeight = 0.30; 
+    const rowHeight = 0.30;
     const topPos = baseTop + (rowIndex * rowHeight);
     itemRows += `
       <div class="col-qty"   style="top:calc(${topPos}in + var(--offset-y)); left:calc(var(--col-qty) + var(--offset-x));">-</div>
@@ -214,9 +214,7 @@ export function generateDeliveryReceiptHTML(order: ReceiptOrder, _tin?: string, 
 export async function printDeliveryReceipt(order: ReceiptOrder, tin?: string, businessAddress?: string, withholdingTaxRate?: number) {
   const htmlContent = generateDeliveryReceiptHTML(order, tin, businessAddress, withholdingTaxRate);
 
-  // Inject into #print-area and call window.print().
-  // Works for both browser dev and Tauri — WKWebView honours @media print
-  // (#root hidden, #print-area shown) the same as a regular browser.
+
   let container = document.getElementById('print-area');
   if (!container) {
     container = document.createElement('div');
@@ -225,7 +223,7 @@ export async function printDeliveryReceipt(order: ReceiptOrder, tin?: string, bu
   }
 
   const headContent = htmlContent.match(/<head[^>]*>([\s\S]*)<\/head>/)?.[1] || '';
-  const bodyInner   = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] || htmlContent;
+  const bodyInner = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] || htmlContent;
 
   container.innerHTML = `${headContent}${bodyInner}`;
 
