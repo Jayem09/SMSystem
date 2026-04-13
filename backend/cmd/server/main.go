@@ -89,6 +89,11 @@ func main() {
 		c.JSON(200, gin.H{"message": "first test works"})
 	})
 
+	// Catch-all for debugging
+	router.GET("/api/catchall", func(c *gin.Context) {
+		c.JSON(200, gin.H{"path": c.Request.URL.Path, "matched": "yes"})
+	})
+
 	router.Use(gin.Recovery())
 	router.Use(middleware.MetricsMiddleware())
 
@@ -113,13 +118,13 @@ func main() {
 
 	routes.Setup(router, cfg, h)
 
-	// Debug - print all registered routes
-	router.GET("/api/debugroutes", func(c *gin.Context) {
+	// Show ALL routes
+	router.GET("/api/listroutes", func(c *gin.Context) {
 		var routes []string
-		for _, route := range router.Routes() {
-			routes = append(routes, route.Path)
+		for _, r := range router.Routes() {
+			routes = append(routes, r.Path+" ("+r.Method+")")
 		}
-		c.JSON(200, gin.H{"routes": routes})
+		c.JSON(200, gin.H{"all_routes": routes})
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
