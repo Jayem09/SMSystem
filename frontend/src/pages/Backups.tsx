@@ -52,8 +52,8 @@ export default function Backups() {
       showToast('Backup created successfully', 'success');
       fetchBackups();
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { error?: string } };
-      showToast(axiosError.response?.data?.error || 'Backup failed', 'error');
+      console.error('Create backup error:', err);
+      showToast('Backup failed', 'error');
     }
     setCreating(false);
   };
@@ -67,8 +67,7 @@ export default function Backups() {
       fetchBackups();
     } catch (err: unknown) {
       console.error('Delete error:', err);
-      const axiosError = err as { response?: { data?: { error?: string } };
-      showToast(axiosError.response?.data?.error || 'Delete failed', 'error');
+      showToast('Delete failed', 'error');
     }
   };
 
@@ -82,8 +81,7 @@ export default function Backups() {
       fetchBackups();
     } catch (err: unknown) {
       console.error('Restore error:', err);
-      const axiosError = err as { response?: { data?: { error?: string } };
-      showToast(axiosError.response?.data?.error || 'Restore failed', 'error');
+      showToast('Restore failed', 'error');
     }
     setRestoring(null);
   };
