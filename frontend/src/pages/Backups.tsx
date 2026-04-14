@@ -58,10 +58,12 @@ export default function Backups() {
     setCreating(false);
   };
 
-  const handleDeleteBackup = async (id: number) => {
+const handleDeleteBackup = async (id: number) => {
+    alert('Delete clicked: ' + id);
     if (!confirm('Delete this backup? This cannot be undone.')) {
       return;
     }
+    console.log('Delete proceeding for id:', id);
     try {
       const res = await api.delete(`/api/backups/${id}`);
       console.log('Delete response:', res);
@@ -262,7 +264,11 @@ export default function Backups() {
                     </>
                   )}
                   <button
-                    onClick={() => handleDeleteBackup(backup.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      alert('Delete button click! id=' + backup.id);
+                      handleDeleteBackup(backup.id);
+                    }}
                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete"
                   >
