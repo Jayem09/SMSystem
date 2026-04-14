@@ -74,17 +74,64 @@ export default function Backups() {
     setRestoring(null);
   };
 
-  const handleDeleteBackup = async (id: number) => {
+const handleDeleteBackup = async (id: number) => {
     if (!confirm('Delete this backup? This cannot be undone.')) {
       return;
     }
     try {
-      await api.delete(`/api/backups/${id}`);
+      const res = await api.delete(`/api/backups/${id}`);
+      console.log('Delete response:', res);
       showToast('Backup deleted', 'success');
       fetchBackups();
     } catch (err: unknown) {
+      console.error('Delete error:', err);
       const axiosError = err as { response?: { data?: { error?: string } } };
       showToast(axiosError.response?.data?.error || 'Delete failed', 'error');
+    }
+  };
+
+  const handleRestoreBackup = async (id: number) => {
+    if (!confirm('Are you sure you want to restore this backup? This will overwrite current data.')) {
+      return;
+    }
+    setRestoring(id);
+    try {
+      const res = await api.post(`/api/backups/${id}/restore`);
+      console.log('Restore response:', res);
+      showToast('Backup restored successfully. Refreshing...', 'success');
+      fetchBackups();
+    } catch (err: unknown) {
+      console.error('Restore error:', err);
+      const axiosError = err as { response?: { data?: { error?: string } } };
+      showToast(axiosError.response?.data?.error || 'Restore failed', 'error');
+    }
+    setRestoring(null);
+  };
+
+  const handleDownloadBackup = async (id: number, filename: string) => {
+    console.log('Download clicked:', id, filename);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/backups/${id}/download`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      
+      console.log('Download response:', response.status, response.statusText);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      console.log('Blob size:', blob.size);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      showToast('Download failed', 'error');
     }
   };
 
