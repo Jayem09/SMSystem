@@ -52,15 +52,14 @@ export default function Backups() {
       showToast('Backup created successfully', 'success');
       fetchBackups();
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { error?: string } } };
+      const axiosError = err as { response?: { data?: { error?: string } };
       showToast(axiosError.response?.data?.error || 'Backup failed', 'error');
     }
     setCreating(false);
   };
 
-const handleDeleteBackup = async (id: number) => {
+  const handleDeleteBackup = async (id: number) => {
     console.log('handleDelete called:', id);
-    // Skip confirm for testing - just delete
     try {
       const res = await api.delete(`/api/backups/${id}`);
       console.log('Delete response:', res);
@@ -68,7 +67,7 @@ const handleDeleteBackup = async (id: number) => {
       fetchBackups();
     } catch (err: unknown) {
       console.error('Delete error:', err);
-      const axiosError = err as { response?: { data?: { error?: string } } };
+      const axiosError = err as { response?: { data?: { error?: string } };
       showToast(axiosError.response?.data?.error || 'Delete failed', 'error');
     }
   };
@@ -117,51 +116,6 @@ const handleDeleteBackup = async (id: number) => {
     }
   };
 
-  const handleRestoreBackup = async (id: number) => {
-    if (!confirm('Are you sure you want to restore this backup? This will overwrite current data.')) {
-      return;
-    }
-    setRestoring(id);
-    try {
-      const res = await api.post(`/api/backups/${id}/restore`);
-      console.log('Restore response:', res);
-      showToast('Backup restored successfully. Refreshing...', 'success');
-      fetchBackups();
-    } catch (err: unknown) {
-      console.error('Restore error:', err);
-      const axiosError = err as { response?: { data?: { error?: string } } };
-      showToast(axiosError.response?.data?.error || 'Restore failed', 'error');
-    }
-    setRestoring(null);
-  };
-
-  const handleDownloadBackup = async (id: number, filename: string) => {
-    console.log('Download clicked:', id, filename);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/backups/${id}/download`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      
-      console.log('Download response:', response.status, response.statusText);
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      console.log('Blob size:', blob.size);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download error:', err);
-      showToast('Download failed', 'error');
-    }
-  };
-
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -193,7 +147,6 @@ const handleDeleteBackup = async (id: number) => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Backup & Restore</h1>
@@ -218,7 +171,6 @@ const handleDeleteBackup = async (id: number) => {
         </button>
       </div>
 
-      {/* Info Banner */}
       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
         <div className="flex items-start gap-3">
           <Database className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -232,7 +184,6 @@ const handleDeleteBackup = async (id: number) => {
         </div>
       </div>
 
-      {/* Backup List */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">Backup History</h2>
@@ -284,20 +235,14 @@ const handleDeleteBackup = async (id: number) => {
                   {backup.status === 'completed' && (
                     <>
                       <button
-                        onClick={() => {
-                          console.log('Download click');
-                          handleDownloadBackup(backup.id, backup.filename);
-                        }}
+                        onClick={() => handleDownloadBackup(backup.id, backup.filename)}
                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                         title="Download"
                       >
                         <Download className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          console.log('Restore click');
-                          handleRestoreBackup(backup.id);
-                        }}
+                        onClick={() => handleRestoreBackup(backup.id)}
                         disabled={restoring === backup.id}
                         className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                         title="Restore"
@@ -311,14 +256,7 @@ const handleDeleteBackup = async (id: number) => {
                     </>
                   )}
                   <button
-                    onMouseDown={(e) => console.log('MouseDown delete')}
-                    onMouseUp={(e) => console.log('MouseUp delete')}
-                    onClick={(e) => {
-                      console.log('onClick delete fired');
-                      e.stopPropagation();
-                      alert('Delete button click! id=' + backup.id);
-                      handleDeleteBackup(backup.id);
-                    }}
+                    onClick={() => handleDeleteBackup(backup.id)}
                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                     title="Delete"
                   >
