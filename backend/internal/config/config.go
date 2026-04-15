@@ -5,9 +5,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
+
+func parseInt(s string, defaultVal int) int {
+	if v, err := strconv.Atoi(s); err == nil {
+		return v
+	}
+	return defaultVal
+}
 
 type Config struct {
 	DBHost      string
@@ -22,6 +30,11 @@ type Config struct {
 	RedisHost   string
 	RedisPort   string
 	BackupPath  string
+	// Backup settings
+	AutoBackupEnabled bool   // Enable automatic backups
+	AutoBackupCron    string // Cron schedule (e.g., "0 2 * * *" = 2am daily)
+	BackupRetention   int    // Number of backups to keep (default 10)
+	BackupCompress    bool   // Compress backups with gzip
 }
 
 func Load() *Config {
@@ -57,6 +70,11 @@ func Load() *Config {
 		RedisHost:   getEnv("REDIS_HOST", "127.0.0.1"),
 		RedisPort:   getEnv("REDIS_PORT", "6379"),
 		BackupPath:  getEnv("BACKUP_PATH", "/var/backups/smsystem"),
+		// Backup settings
+		AutoBackupEnabled: getEnv("AUTO_BACKUP_ENABLED", "false") == "true",
+		AutoBackupCron:    getEnv("AUTO_BACKUP_CRON", "0 2 * * *"), // Default: 2am daily
+		BackupRetention:   parseInt(getEnv("BACKUP_RETENTION", "10"), 10),
+		BackupCompress:    getEnv("BACKUP_COMPRESS", "true") == "true",
 	}
 }
 

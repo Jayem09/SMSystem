@@ -52,6 +52,15 @@ func main() {
 	backupService := services.NewBackupService(cfg)
 	emailService := services.NewEmailService()
 
+	// Initialize backup scheduler if enabled
+	var backupScheduler *services.BackupScheduler
+	if cfg.AutoBackupEnabled {
+		backupScheduler = services.NewBackupScheduler(cfg, backupService)
+		backupScheduler.Start()
+		log.Printf("Auto-backup scheduler enabled: %s (retention: %d, compress: %v)",
+			cfg.AutoBackupCron, cfg.BackupRetention, cfg.BackupCompress)
+	}
+
 	terminalService := services.NewTerminalService(true, "COM1")
 
 	h := &routes.Handlers{
