@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Package, Users, ShoppingCart, PhilippinePeso, MoreVertical, Download, Building2 } from 'lucide-react';
+import { TrendingUp, Package, Users, ShoppingCart, PhilippinePeso, MoreVertical, Download, Building2, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Skeleton, SkeletonCard } from '../components/EmptyState';
 import { useDashboardStats } from '../hooks/useQueries';
+import { useDashboardEvents } from '../hooks/useDashboardEvents';
+import { onEvent } from '../services/eventService';
 
 interface OrderItem {
   product?: { name: string };
@@ -58,6 +60,8 @@ export default function Dashboard() {
   });
 
   const [dropdownOpen, setDropdownOpen] = useState<'advisors' | 'products' | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const connectionStatus = useDashboardEvents();
 
 
   useEffect(() => {
@@ -94,6 +98,14 @@ export default function Dashboard() {
       }));
     }
   }, [statsData]);
+
+  // Update timestamp when SSE events refresh the dashboard
+  useEffect(() => {
+    const unsubscribe = onEvent(() => {
+      setLastUpdated(new Date());
+    });
+    return unsubscribe;
+  }, []);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(val);
@@ -227,9 +239,33 @@ export default function Dashboard() {
           </h1>
           <p className="text-gray-500 mt-1">Hello {user?.name}, here's what's happening today.</p>
         </div>
-        <div className="hidden md:block text-right">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Last Updated</p>
-          <p className="text-sm font-medium text-gray-900">{new Date().toLocaleTimeString()}</p>
+        <div className="hidden md:flex items-center gap-6">
+          {/* Live status indicator */}
+          <div className="flex items-center gap-2">
+            {connectionStatus === 'connected' ? (
+              <Wifi className="w-4 h-4 text-emerald-500" />
+            ) : connectionStatus === 'connecting' ? (
+              <Wifi className="w-4 h-4 text-amber-400 animate-pulse" />
+            ) : (
+              <WifiOff className="w-4 h-4 text-gray-300" />
+            )}
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                connectionStatus === 'connected'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : connectionStatus === 'connecting'
+                  ? 'bg-amber-50 text-amber-600'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'connecting' ? 'Connecting' : 'Offline'}
+            </span>
+          </div>
+          {/* Reactive last updated */}
+          <div className="text-right">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Last Updated</p>
+            <p className="text-sm font-medium text-gray-900">{lastUpdated.toLocaleTimeString()}</p>
+          </div>
         </div>
       </div>
       <div className="flex justify-end gap-3 mb-6">

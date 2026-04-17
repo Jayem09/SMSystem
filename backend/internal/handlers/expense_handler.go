@@ -60,6 +60,9 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	h.LogService.Record(userID, "CREATE", "Expense", strconv.Itoa(int(expense.ID)), "Recorded new expense", c.ClientIP())
 
 	c.JSON(http.StatusCreated, expense)
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventExpenseAdded, expense.BranchID, nil)
 }
 
 func (h *ExpenseHandler) List(c *gin.Context) {
@@ -110,6 +113,14 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 
 func (h *ExpenseHandler) Delete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	// Fetch expense first to get branch_id for broadcast
+	var expense models.Expense
+	if err := database.DB.First(&expense, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+		return
+	}
+
 	if err := database.DB.Delete(&models.Expense{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
 		return
@@ -121,4 +132,7 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventExpenseAdded, expense.BranchID, nil)
 }

@@ -222,6 +222,9 @@ func (h *TransferHandler) Create(c *gin.Context) {
 	h.LogService.Record(userID, "CREATE", "StockTransfer", strconv.Itoa(int(transfer.ID)), fmt.Sprintf("Created stock transfer %s", transfer.ReferenceNumber), c.ClientIP())
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Transfer request created", "transfer": transfer})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventTransferUpdated, branchID, nil)
 }
 
 func (h *TransferHandler) UpdateStatus(c *gin.Context) {
@@ -526,4 +529,7 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Transfer status updated", "transfer": transfer})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventTransferUpdated, userBranchID, nil)
 }

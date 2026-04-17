@@ -36,6 +36,7 @@ type Handlers struct {
 	System        *handlers.SystemHandler
 	Analytics     *handlers.AnalyticsHandler
 	Promo         *handlers.PromoHandler
+	Event         *handlers.EventHandler
 	Email         *services.EmailService
 }
 
@@ -46,10 +47,6 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 			"status":  "ok",
 			"message": "SMSystem API is running",
 		})
-	})
-
-	router.GET("/api/xxxtest", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "xxx test works"})
 	})
 
 	router.GET("/api/status", h.System.GetStatus)
@@ -78,6 +75,7 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		protected.GET("/auth/me", h.Auth.GetMe)
 
 		protected.GET("/dashboard", h.Dashboard.GetStats)
+		protected.GET("/events", h.Event.Stream)
 		protected.GET("/analytics/revenue", h.Analytics.GetRevenue)
 		protected.GET("/search", h.Search.GlobalSearch)
 

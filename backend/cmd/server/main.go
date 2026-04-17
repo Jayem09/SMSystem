@@ -47,15 +47,17 @@ func main() {
 	database.Connect(cfg)
 	log.Println("Database ready")
 
+	services.InitBroadcaster()
+	log.Println("Event broadcaster ready")
+
 	authService := services.NewAuthService(cfg)
 	logService := services.NewLogService()
 	backupService := services.NewBackupService(cfg)
 	emailService := services.NewEmailService()
 
 	// Initialize backup scheduler if enabled
-	var backupScheduler *services.BackupScheduler
 	if cfg.AutoBackupEnabled {
-		backupScheduler = services.NewBackupScheduler(cfg, backupService)
+		backupScheduler := services.NewBackupScheduler(cfg, backupService)
 		backupScheduler.Start()
 		log.Printf("Auto-backup scheduler enabled: %s (retention: %d, compress: %v)",
 			cfg.AutoBackupCron, cfg.BackupRetention, cfg.BackupCompress)
@@ -87,6 +89,7 @@ func main() {
 		System:        handlers.NewSystemHandler(backupService),
 		Analytics:     handlers.NewAnalyticsHandler(),
 		Promo:         handlers.NewPromoHandler(emailService),
+		Event:         handlers.NewEventHandler(),
 		Email:         emailService,
 	}
 

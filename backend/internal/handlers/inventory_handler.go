@@ -387,6 +387,9 @@ func (h *InventoryHandler) AdjustStock(c *gin.Context) {
 	h.LogService.Record(userID, "UPDATE", "Inventory", strconv.Itoa(int(batch.ID)), fmt.Sprintf("Adjusted Batch #%d to %d", batch.ID, input.NewQuantity), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{"message": "Stock successfully adjusted"})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventStockAdjusted, branchID, nil)
 }
 
 func (h *InventoryHandler) GetLowStockReport(c *gin.Context) {

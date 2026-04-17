@@ -386,6 +386,12 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	h.LogService.Record(userID, "CREATE", "Order", strconv.Itoa(int(order.ID)), fmt.Sprintf("Checked out POS Order #%d", order.ID), c.ClientIP())
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Order created", "order": order})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventOrderCreated, order.BranchID, nil)
+	if orderStatus == "completed" {
+		services.GetBroadcaster().BroadcastToBranch(services.EventOrderCompleted, order.BranchID, nil)
+	}
 }
 
 func (h *OrderHandler) UpdateStatus(c *gin.Context) {
@@ -501,6 +507,11 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	h.LogService.Record(userID, "UPDATE_STATUS", "Order", strconv.Itoa(int(order.ID)), fmt.Sprintf("Status changed from %s to %s", oldStatus, input.Status), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated", "order": order})
+
+	// Broadcast event for live dashboard updates
+	if input.Status == "completed" {
+		services.GetBroadcaster().BroadcastToBranch(services.EventOrderCompleted, order.BranchID, nil)
+	}
 }
 
 func (h *OrderHandler) Delete(c *gin.Context) {
@@ -602,4 +613,7 @@ func (h *OrderHandler) Delete(c *gin.Context) {
 	h.LogService.Record(userID, "DELETE", "Order", strconv.Itoa(int(id)), fmt.Sprintf("Deleted order #%d (stock %s)", id, statusMsg), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
+
+	// Broadcast event for live dashboard updates
+	services.GetBroadcaster().BroadcastToBranch(services.EventOrderDeleted, order.BranchID, nil)
 }
