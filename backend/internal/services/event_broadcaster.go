@@ -1,6 +1,7 @@
 package services
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -134,6 +135,7 @@ func (b *EventBroadcaster) Broadcast(event DashboardEvent) {
 }
 
 func (b *EventBroadcaster) BroadcastToBranch(eventType string, branchID uint, payload interface{}) {
+	log.Printf("[BROADCAST] Broadcasting %s for branch_id=%d", eventType, branchID)
 	b.Broadcast(DashboardEvent{
 		Type:      eventType,
 		BranchID:  branchID,

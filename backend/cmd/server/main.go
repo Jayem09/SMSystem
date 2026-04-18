@@ -89,7 +89,7 @@ func main() {
 		System:        handlers.NewSystemHandler(backupService),
 		Analytics:     handlers.NewAnalyticsHandler(),
 		Promo:         handlers.NewPromoHandler(emailService),
-		Event:         handlers.NewEventHandler(),
+		Event:         handlers.NewEventHandler(cfg),
 		Email:         emailService,
 	}
 

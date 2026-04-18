@@ -68,6 +68,10 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		auth.POST("/login", h.Auth.Login)
 	}
 
+	// SSE events endpoint — auth handled inline via query param token
+	// (EventSource cannot send Authorization headers)
+	router.GET("/api/events", h.Event.Stream)
+
 	protected := router.Group("/api")
 	protected.Use(middleware.AuthMiddleware(cfg))
 	{
@@ -75,7 +79,6 @@ func Setup(router *gin.Engine, cfg *config.Config, h *Handlers) {
 		protected.GET("/auth/me", h.Auth.GetMe)
 
 		protected.GET("/dashboard", h.Dashboard.GetStats)
-		protected.GET("/events", h.Event.Stream)
 		protected.GET("/analytics/revenue", h.Analytics.GetRevenue)
 		protected.GET("/search", h.Search.GlobalSearch)
 
