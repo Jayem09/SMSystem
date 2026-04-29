@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -51,7 +52,9 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Settings] UpdateBulk called with keys: %v", getMapKeys(input))
+	// Force stdout flush
+	fmt.Println("[Settings] UpdateBulk called with keys:", getMapKeys(input))
+	log.Println("[Settings] UpdateBulk called with keys:", getMapKeys(input))
 
 	tx := database.DB.Begin()
 	for key, value := range input {
@@ -64,39 +67,39 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 			strValue = string(bytes)
 		}
 
-		log.Printf("[Settings] Processing key=%s, value_len=%d", key, len(strValue))
+		fmt.Printf("[Settings] Processing key=%s, value_len=%d\n", key, len(strValue))
 
 		setting := models.Setting{Key: key, Value: strValue}
 		var existing models.Setting
 		err := tx.First(&existing, "key = ?", key).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				log.Printf("[Settings] Creating NEW key=%s", key)
+				fmt.Printf("[Settings] Creating NEW key=%s\n", key)
 				if err := tx.Create(&setting).Error; err != nil {
-					log.Printf("[Settings] Create FAILED: %v", err)
+					fmt.Printf("[Settings] Create FAILED: %v\n", err)
 					tx.Rollback()
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Create failed: " + err.Error()})
 					return
 				}
 			} else {
-				log.Printf("[Settings] Query error: %v", err)
+				fmt.Printf("[Settings] Query error: %v\n", err)
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Query failed: " + err.Error()})
 				return
 			}
 		} else {
-			log.Printf("[Settings] Updating existing key=%s, old_value_len=%d", key, len(existing.Value))
+			fmt.Printf("[Settings] Updating existing key=%s, old_value_len=%d\n", key, len(existing.Value))
 			if err := tx.Model(&existing).Update("value", strValue).Error; err != nil {
-				log.Printf("[Settings] Update FAILED: %v", err)
+				fmt.Printf("[Settings] Update FAILED: %v\n", err)
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed: " + err.Error()})
 				return
 			}
 		}
-		log.Printf("[Settings] Key=%s saved successfully", key)
+		fmt.Printf("[Settings] Key=%s saved successfully\n", key)
 	}
 	tx.Commit()
-	log.Printf("[Settings] All settings saved successfully!")
+	fmt.Println("[Settings] All settings saved successfully!")
 
 	currentUserID, _ := c.Get("userID")
 	if currentUserID != nil {
