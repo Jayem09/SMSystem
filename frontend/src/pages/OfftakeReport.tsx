@@ -53,6 +53,8 @@ export default function OfftakeReport() {
   const [paymentStatus, setPaymentStatus] = useState('all');
   const [serviceAdvisor, setServiceAdvisor] = useState('');
   const [mechanic, setMechanic] = useState('');
+  const [tintner, setTintner] = useState('');
+  const [carwasher, setCarwasher] = useState('');
   const [branchFilter, setBranchFilter] = useState('ALL');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [rows, setRows] = useState<OfftakeReportRow[]>([]);
@@ -61,6 +63,11 @@ export default function OfftakeReport() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<unknown>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // Compute optional role column visibility once per table render
+  const showMechanicColumn = rows.some((row) => row.mechanic.trim().length > 0);
+  const showTintnerColumn = rows.some((row) => row.tintner.trim().length > 0);
+  const showCarwasherColumn = rows.some((row) => row.carwasher.trim().length > 0);
 
   const filters: OfftakeExportFilters = useMemo(() => ({
     startDate,
@@ -71,8 +78,7 @@ export default function OfftakeReport() {
     branchLabel: branches.find(b => b.id === Number(branchFilter))?.name ?? '',
     paymentStatus,
     serviceAdvisor,
-    mechanic,
-  }), [startDate, endDate, customer, invoiceNo, itemName, branchFilter, branches, paymentStatus, serviceAdvisor, mechanic]);
+  }), [startDate, endDate, customer, invoiceNo, itemName, branchFilter, branches, paymentStatus, serviceAdvisor]);
 
   // Fetch branches for super_admin
   useEffect(() => {
@@ -97,6 +103,8 @@ export default function OfftakeReport() {
       if (paymentStatus !== 'all') params.set('payment_status', paymentStatus);
       if (serviceAdvisor) params.set('service_advisor', serviceAdvisor);
       if (mechanic) params.set('mechanic', mechanic);
+      if (tintner) params.set('tintner', tintner);
+      if (carwasher) params.set('carwasher', carwasher);
       if (branchFilter !== 'ALL') params.set('branch_id', branchFilter);
 
       const res = await api.get(`/api/reports/offtake?${params.toString()}`);
@@ -112,7 +120,7 @@ export default function OfftakeReport() {
 
   useEffect(() => {
     fetchRows();
-  }, [startDate, endDate, customer, invoiceNo, itemName, paymentStatus, serviceAdvisor, mechanic, branchFilter]);
+  }, [startDate, endDate, customer, invoiceNo, itemName, paymentStatus, serviceAdvisor, mechanic, tintner, carwasher, branchFilter]);
 
   const handleExport = async () => {
     try {
@@ -145,7 +153,7 @@ export default function OfftakeReport() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-gray-600" />
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Offtake Report</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Offtake Report</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">{rows.length} invoice{rows.length !== 1 ? 's' : ''}</span>
@@ -273,7 +281,7 @@ export default function OfftakeReport() {
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder="Service Advisor"
+              placeholder="Salesperson"
               value={serviceAdvisor}
               onChange={(e) => setServiceAdvisor(e.target.value)}
               className="text-sm text-gray-700 outline-none w-full"
@@ -284,7 +292,6 @@ export default function OfftakeReport() {
               </button>
             )}
           </div>
-
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white flex-1 min-w-[150px]">
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
@@ -296,6 +303,36 @@ export default function OfftakeReport() {
             />
             {mechanic && (
               <button onClick={() => setMechanic('')} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white flex-1 min-w-[150px]">
+            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Tintner"
+              value={tintner}
+              onChange={(e) => setTintner(e.target.value)}
+              className="text-sm text-gray-700 outline-none w-full"
+            />
+            {tintner && (
+              <button onClick={() => setTintner('')} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white flex-1 min-w-[150px]">
+            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Carwasher"
+              value={carwasher}
+              onChange={(e) => setCarwasher(e.target.value)}
+              className="text-sm text-gray-700 outline-none w-full"
+            />
+            {carwasher && (
+              <button onClick={() => setCarwasher('')} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -340,8 +377,10 @@ export default function OfftakeReport() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Date</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Branch</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Service Advisor</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mechanic</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Salesperson</th>
+                {showMechanicColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mechanic</th>}
+                {showTintnerColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Tintner</th>}
+                {showCarwasherColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Carwasher</th>}
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Status</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600 whitespace-nowrap">Total</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600 whitespace-nowrap">Paid</th>
@@ -352,11 +391,11 @@ export default function OfftakeReport() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500">Loading...</td>
+                  <td colSpan={13} className="px-4 py-8 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500">No invoices found</td>
+                  <td colSpan={13} className="px-4 py-8 text-center text-gray-500">No invoices found</td>
                 </tr>
               ) : (
                 rows.map((row) => (
@@ -370,7 +409,9 @@ export default function OfftakeReport() {
                     <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{row.customer_name}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.branch_name}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.service_advisor}</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.mechanic}</td>
+                    {showMechanicColumn && <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.mechanic || ''}</td>}
+                    {showTintnerColumn && <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.tintner || ''}</td>}
+                    {showCarwasherColumn && <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.carwasher || ''}</td>}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
                         row.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
