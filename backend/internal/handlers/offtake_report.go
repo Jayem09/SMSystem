@@ -22,6 +22,7 @@ type OfftakeReportRow struct {
 	CustomerName   string  `json:"customer_name"`
 	BranchName     string  `json:"branch_name"`
 	ServiceAdvisor string  `json:"service_advisor"`
+	Mechanic       string  `json:"mechanic"`
 	PaymentStatus  string  `json:"payment_status"`
 	TotalAmount    float64 `json:"total_amount"`
 	AmountPaid     float64 `json:"amount_paid"`
@@ -42,6 +43,7 @@ type offtakeRawRow struct {
 	CustomerName   string    `gorm:"column:customer_name"`
 	BranchName     string    `gorm:"column:branch_name"`
 	ServiceAdvisor string    `gorm:"column:service_advisor"`
+	Mechanic       string    `gorm:"column:mechanic"`
 	PaymentStatus  string    `gorm:"column:payment_status"`
 	TotalAmount    float64   `gorm:"column:total_amount"`
 	AmountPaid     float64   `gorm:"column:amount_paid"`
@@ -125,6 +127,7 @@ func buildOfftakeRows(raw []offtakeRawRow) []OfftakeReportRow {
 			CustomerName:   row.CustomerName,
 			BranchName:     row.BranchName,
 			ServiceAdvisor: row.ServiceAdvisor,
+			Mechanic:       row.Mechanic,
 			PaymentStatus:  row.PaymentStatus,
 			TotalAmount:    row.TotalAmount,
 			AmountPaid:     row.AmountPaid,
@@ -151,6 +154,7 @@ func (h *ReportHandler) GetOfftake(c *gin.Context) {
 			COALESCE(customers.name, orders.guest_name, 'Walk-in') AS customer_name,
 			COALESCE(branches.name, '') AS branch_name,
 			COALESCE(NULLIF(TRIM(orders.service_advisor_name), ''), 'Unassigned') AS service_advisor,
+			COALESCE(NULLIF(TRIM(orders.mechanic_name), ''), 'Unassigned') AS mechanic,
 			orders.payment_status,
 			orders.total_amount,
 			orders.amount_paid,
@@ -189,6 +193,10 @@ func (h *ReportHandler) GetOfftake(c *gin.Context) {
 		query = query.Where("orders.service_advisor_name LIKE ?", "%"+serviceAdvisor+"%")
 	}
 
+	if mechanic := strings.TrimSpace(c.Query("mechanic")); mechanic != "" {
+		query = query.Where("orders.mechanic_name LIKE ?", "%"+mechanic+"%")
+	}
+
 	query = query.Group(`
 		orders.id,
 		orders.receipt_type,
@@ -197,6 +205,7 @@ func (h *ReportHandler) GetOfftake(c *gin.Context) {
 		orders.guest_name,
 		branches.name,
 		orders.service_advisor_name,
+		orders.mechanic_name,
 		orders.payment_status,
 		orders.total_amount,
 		orders.amount_paid,

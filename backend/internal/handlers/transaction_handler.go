@@ -26,6 +26,7 @@ type TransactionRow struct {
 	BranchName         string  `json:"branch_name"`
 	CustomerName       string  `json:"customer_name"`
 	ServiceAdvisorName string  `json:"service_advisor_name"`
+	MechanicName      string  `json:"mechanic_name"`
 	ItemName           string  `json:"item_name"`
 	UnitOfMeasure      string  `json:"unit_of_measure"`
 	CategoryName       string  `json:"category_name"`
@@ -38,6 +39,55 @@ type TransactionRow struct {
 
 func resolveTransactionDate(dateStr string) (time.Time, error) {
 	return time.Parse(transactionDateLayout, dateStr)
+}
+
+func buildTransactionSearchFilter(search string) (string, []interface{}) {
+	search = strings.TrimSpace(search)
+	like := "%" + search + "%"
+	clause := "COALESCE(customers.name, orders.guest_name, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ? OR orders.mechanic_name LIKE ?"
+	return clause, []interface{}{like, like, like, like}
+}
+
+type transactionRawRow struct {
+	CreatedAt          time.Time `gorm:"column:created_at"`
+	ID                 uint      `gorm:"column:id"`
+	ReceiptType        string    `gorm:"column:receipt_type"`
+	BranchName         string    `gorm:"column:branch_name"`
+	CustomerName       string    `gorm:"column:customer_name"`
+	ServiceAdvisorName string    `gorm:"column:service_advisor_name"`
+	MechanicName       string    `gorm:"column:mechanic_name"`
+	ItemName           string    `gorm:"column:item_name"`
+	UnitOfMeasure      string    `gorm:"column:unit_of_measure"`
+	CategoryName       string    `gorm:"column:category_name"`
+	Quantity           int       `gorm:"column:quantity"`
+	UnitPrice          float64   `gorm:"column:unit_price"`
+	Subtotal           float64   `gorm:"column:subtotal"`
+	PaymentMethod      string    `gorm:"column:payment_method"`
+	OrderStatus        string    `gorm:"column:order_status"`
+}
+
+func buildTransactionRows(rows []transactionRawRow) []TransactionRow {
+	result := make([]TransactionRow, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, TransactionRow{
+			Date:               r.CreatedAt.Format("2006-01-02"),
+			OrderID:            r.ID,
+			ReceiptType:        r.ReceiptType,
+			BranchName:         r.BranchName,
+			CustomerName:       r.CustomerName,
+			ServiceAdvisorName: r.ServiceAdvisorName,
+			MechanicName:       r.MechanicName,
+			ItemName:           r.ItemName,
+			UnitOfMeasure:      r.UnitOfMeasure,
+			CategoryName:       r.CategoryName,
+			Quantity:           r.Quantity,
+			UnitPrice:          r.UnitPrice,
+			Subtotal:           r.Subtotal,
+			PaymentMethod:      r.PaymentMethod,
+			OrderStatus:        r.OrderStatus,
+		})
+	}
+	return result
 }
 
 func (h *TransactionHandler) List(c *gin.Context) {
@@ -72,6 +122,7 @@ func (h *TransactionHandler) List(c *gin.Context) {
 			branches.name        AS branch_name,
 			COALESCE(customers.name, orders.guest_name, 'Walk-in') AS customer_name,
 			COALESCE(orders.service_advisor_name, '')              AS service_advisor_name,
+			COALESCE(orders.mechanic_name, '')                      AS mechanic_name,
 			products.name                                          AS item_name,
 			COALESCE(products.size, 'pc')                         AS unit_of_measure,
 			COALESCE(categories.name, '')                         AS category_name,
@@ -100,55 +151,17 @@ func (h *TransactionHandler) List(c *gin.Context) {
 	}
 
 	if search != "" {
-		like := "%" + search + "%"
-		db = db.Where(
-			"COALESCE(customers.name, orders.guest_name, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ?",
-			like, like, like,
-		)
+		clause, args := buildTransactionSearchFilter(search)
+		db = db.Where(clause, args...)
 	}
 
-	type rawRow struct {
-		CreatedAt          time.Time `gorm:"column:created_at"`
-		ID                 uint      `gorm:"column:id"`
-		ReceiptType        string    `gorm:"column:receipt_type"`
-		BranchName         string    `gorm:"column:branch_name"`
-		CustomerName       string    `gorm:"column:customer_name"`
-		ServiceAdvisorName string    `gorm:"column:service_advisor_name"`
-		ItemName           string    `gorm:"column:item_name"`
-		UnitOfMeasure      string    `gorm:"column:unit_of_measure"`
-		CategoryName       string    `gorm:"column:category_name"`
-		Quantity           int       `gorm:"column:quantity"`
-		UnitPrice          float64   `gorm:"column:unit_price"`
-		Subtotal           float64   `gorm:"column:subtotal"`
-		PaymentMethod      string    `gorm:"column:payment_method"`
-		OrderStatus        string    `gorm:"column:order_status"`
-	}
-
-	var rows []rawRow
+	var rows []transactionRawRow
 	if err := db.Order("orders.created_at DESC, orders.id DESC").Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transactions"})
 		return
 	}
 
-	result := make([]TransactionRow, 0, len(rows))
-	for _, r := range rows {
-		result = append(result, TransactionRow{
-			Date:               r.CreatedAt.Format("2006-01-02"),
-			OrderID:            r.ID,
-			ReceiptType:        r.ReceiptType,
-			BranchName:         r.BranchName,
-			CustomerName:       r.CustomerName,
-			ServiceAdvisorName: r.ServiceAdvisorName,
-			ItemName:           r.ItemName,
-			UnitOfMeasure:      r.UnitOfMeasure,
-			CategoryName:       r.CategoryName,
-			Quantity:           r.Quantity,
-			UnitPrice:          r.UnitPrice,
-			Subtotal:           r.Subtotal,
-			PaymentMethod:      r.PaymentMethod,
-			OrderStatus:        r.OrderStatus,
-		})
-	}
+	result := buildTransactionRows(rows)
 
 	c.JSON(http.StatusOK, gin.H{
 		"transactions": result,

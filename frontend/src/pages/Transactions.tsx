@@ -9,6 +9,7 @@ interface TransactionRow {
   branch_name: string;
   customer_name: string;
   service_advisor_name: string;
+  mechanic_name: string;
   item_name: string;
   unit_of_measure: string;
   category_name: string;
@@ -142,7 +143,7 @@ export default function Transactions() {
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder="Search customer, item, advisor..."
+              placeholder="Search customer, item, service advisor, or mechanic..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="text-sm text-gray-700 outline-none w-full"
@@ -174,7 +175,8 @@ export default function Transactions() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Type</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Branch</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Advisor</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Service Advisor</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mechanic</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Item</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Category</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600 whitespace-nowrap">Qty</th>
@@ -188,7 +190,7 @@ export default function Transactions() {
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    {Array.from({ length: 13 }).map((__, j) => (
+                    {Array.from({ length: 14 }).map((__, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-100 rounded w-full" />
                       </td>
@@ -197,7 +199,7 @@ export default function Transactions() {
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={14} className="px-4 py-12 text-center text-gray-400">
                     No transactions found for the selected period.
                   </td>
                 </tr>
@@ -226,6 +228,9 @@ export default function Transactions() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {row.service_advisor_name || '—'}
                     </td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {row.mechanic_name || '—'}
+                    </td>
                     <td className="px-4 py-3 text-gray-800 max-w-[200px] truncate" title={row.item_name}>
                       {row.item_name}
                     </td>
@@ -248,7 +253,7 @@ export default function Transactions() {
             {!loading && rows.length > 0 && (
               <tfoot>
                 <tr className="bg-gray-50 border-t-2 border-gray-200">
-                  <td colSpan={11} className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                  <td colSpan={12} className="px-4 py-3 text-right text-sm font-medium text-gray-600">
                     Total ({rows.length} line items)
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-semibold text-gray-900 whitespace-nowrap">
