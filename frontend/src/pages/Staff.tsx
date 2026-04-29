@@ -82,7 +82,10 @@ export default function Staff() {
   const fetchSettings = async () => {
     try {
       const res = await api.get('/api/settings');
-      setStaffDirectory(normalizeStaffDirectorySettings(res.data as Record<string, unknown>));
+      console.log('[Staff] fetchSettings response:', res.data);
+      const normalized = normalizeStaffDirectorySettings(res.data as Record<string, unknown>);
+      console.log('[Staff] normalized staff:', normalized);
+      setStaffDirectory(normalized);
     } catch (error) {
       console.error('Failed to fetch staff directory settings:', error);
       setStaffDirectory([]);
@@ -174,15 +177,20 @@ export default function Staff() {
   const saveStaffDirectory = async (nextDirectory: StaffDirectoryEntry[]) => {
     setIsSavingStaffDirectory(true);
     try {
-      await api.post('/api/settings', { staff_directory: nextDirectory });
+      console.log('[Staff] Saving:', { staff_directory: nextDirectory });
+      const payload = { staff_directory: nextDirectory };
+      console.log('[Staff] Payload string:', JSON.stringify(payload));
+      const res = await api.post('/api/settings', payload);
+      console.log('[Staff] Save response:', res.data, 'status:', res.status);
       // Invalidate settings cache so POS gets fresh data
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       setStaffDirectory(nextDirectory);
       showToast('Staff directory updated.', 'success');
       return true;
-    } catch (error) {
-      console.error('Failed to save staff directory:', error);
-      showToast('Failed to save staff directory.', 'error');
+    } catch (error: unknown) {
+      const e = error as { response?: { data?: { error?: string } }; status?: number };
+      console.error('[Staff] Save error:', e.response?.data, 'status:', e.status);
+      showToast(e.response?.data?.error || 'Failed to save settings.', 'error');
       return false;
     } finally {
       setIsSavingStaffDirectory(false);

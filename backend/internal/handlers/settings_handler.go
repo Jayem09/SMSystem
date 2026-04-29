@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"smsystem-backend/internal/database"
@@ -49,6 +50,8 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[Settings] UpdateBulk input: %+v", input)
+
 	tx := database.DB.Begin()
 	for key, value := range input {
 		strValue := ""
@@ -63,13 +66,17 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 		setting := models.Setting{Key: key, Value: strValue}
 		var existing models.Setting
 		if err := tx.First(&existing, "key = ?", key).Error; err != nil {
+			log.Printf("[Settings] Creating new key=%s", key)
 			if err := tx.Create(&setting).Error; err != nil {
+				log.Printf("[Settings] Create error: %v", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
 				return
 			}
 		} else {
+			log.Printf("[Settings] Updating key=%s", key)
 			if err := tx.Model(&existing).Update("value", strValue).Error; err != nil {
+				log.Printf("[Settings] Update error: %v", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
 				return
