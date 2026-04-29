@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Search, Trash2, Shield, UserCog, Key } from 'lucide-react';
 import api from '../api/axios';
 import DataTable from '../components/DataTable';
@@ -8,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import {
   addStaffDirectoryEntry,
+  filterStaffDirectoryByType,
   normalizeStaffDirectorySettings,
   removeStaffDirectoryEntry,
   type StaffDirectoryEntry,
@@ -49,6 +51,7 @@ export default function Staff() {
 
   // Named staff directory state
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [staffDirectory, setStaffDirectory] = useState<StaffDirectoryEntry[]>([]);
   const [isStaffDirectoryModalOpen, setIsStaffDirectoryModalOpen] = useState(false);
   const [staffDirectoryName, setStaffDirectoryName] = useState('');
@@ -172,6 +175,8 @@ export default function Staff() {
     setIsSavingStaffDirectory(true);
     try {
       await api.post('/api/settings', { staff_directory: nextDirectory });
+      // Invalidate settings cache so POS gets fresh data
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
       setStaffDirectory(nextDirectory);
       showToast('Staff directory updated.', 'success');
       return true;
@@ -306,7 +311,7 @@ export default function Staff() {
     <div className="p-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-2xl font-bold border-b-2 border-indigo-500 pb-2 inline-block text-gray-800">
             Staff & Roles
           </h1>
           <p className="text-gray-500 text-sm mt-2 flex items-center">
@@ -361,6 +366,7 @@ export default function Staff() {
                   <p className="text-xs text-gray-500">
                     {entry.type === 'service_advisor' ? 'Service Advisor' :
                      entry.type === 'mechanic' ? 'Mechanic' :
+                     entry.type === 'tintner' ? 'Tintner' :
                      entry.type === 'carwasher' ? 'Carwasher' : entry.type}
                   </p>
                 </div>
@@ -404,6 +410,7 @@ export default function Staff() {
             >
               <option value="service_advisor">Service Advisor</option>
               <option value="mechanic">Mechanic</option>
+              <option value="tintner">Tintner</option>
               <option value="carwasher">Carwasher</option>
             </select>
           </div>
