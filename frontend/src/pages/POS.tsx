@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import { printReceipt } from '../components/Receipt';
 import { printDeliveryReceipt } from '../components/DeliveryReceipt';
 import {
-  Search, ShoppingCart, Trash2, Printer, CheckCircle, Package, User, Users
+  Search, ShoppingCart, Trash2, Printer, CheckCircle, Package
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { getIsOfflineMode } from '../context/AuthContext';
@@ -147,7 +147,7 @@ function formatMoneyInputValue(value: number) {
 export default function POS() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts } = usePOS();
+  const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts, lastAddBlocked } = usePOS();
   
   // Fetch settings for staff directory dropdowns
   const { data: settingsData } = useQuery({
@@ -162,6 +162,8 @@ export default function POS() {
   const staffDirectory = settingsData ? normalizeStaffDirectorySettings(settingsData) : [];
   const serviceAdvisors = filterStaffDirectoryByType(staffDirectory, 'service_advisor');
   const mechanics = filterStaffDirectoryByType(staffDirectory, 'mechanic');
+  const tintners = filterStaffDirectoryByType(staffDirectory, 'tintner');
+  const carwashers = filterStaffDirectoryByType(staffDirectory, 'carwasher');
   
   const { products, categories, customers, cart, search, selectedCategory, loading, error } = state;
   const isSuperAdmin = user?.role === 'super_admin';
@@ -170,7 +172,19 @@ export default function POS() {
   const [customerId, setCustomerId] = useState('');
   const [serviceAdvisorName, setServiceAdvisorName] = useState('');
   const [mechanicName, setMechanicName] = useState('');
+  const [tintnerName, setTintnerName] = useState('');
+  const [carwasherName, setCarwasherName] = useState('');
+  const [showExtraRoles, setShowExtraRoles] = useState(false);
   const [guestName, setGuestName] = useState('');
+
+  // Extra role summary for collapsed state
+  const extraRoleSummary = [
+    mechanicName ? `Mechanic: ${mechanicName}` : '',
+    tintnerName ? `Tintner: ${tintnerName}` : '',
+    carwasherName ? `Carwasher: ${carwasherName}` : '',
+  ].filter(Boolean).join(' • ');
+
+  const moreRolesLabel = extraRoleSummary ? 'Edit extra roles' : '+ More roles';
   const [guestPhone, setGuestPhone] = useState('');
   const [tin, setTin] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
@@ -325,6 +339,12 @@ export default function POS() {
 
   const finalTotal = Math.max(0, posSubtotal - parseFloat(discount || '0'));
   const earnedPoints = Math.floor(posSubtotal / 200);
+  const previewPayment = resolveCheckoutPayment(
+    finalTotal,
+    'completed',
+    paymentMethod,
+    paymentMethod === 'card' ? finalTotal : parseAmountPaidInput(amountPaid),
+  );
   const displayedAmountPaid = paymentMethod === 'card' ? formatMoneyInputValue(finalTotal) : amountPaid;
 
   const handleAddToCart = (product: Product) => {
@@ -399,6 +419,8 @@ export default function POS() {
         withholdingTaxRate: parseFloat(withholdingTaxRate) || 0,
         serviceAdvisorName: serviceAdvisorName,
         mechanicName: mechanicName,
+        tintnerName: tintnerName,
+        carwasherName: carwasherName,
         rewardId: selectedReward?.id || null,
         rewardPoints: selectedReward?.points_required || 0,
         items: JSON.stringify(cart.map(item => ({
@@ -602,6 +624,8 @@ export default function POS() {
         guest_phone: !customerId ? guestPhone : '',
         service_advisor_name: serviceAdvisorName,
         mechanic_name: mechanicName,
+        tintner_name: tintnerName,
+        carwasher_name: carwasherName,
         payment_method: paymentMethod,
         amount_paid: checkoutPayment.amountPaid,
         discount_amount: parseFloat(discount),
@@ -880,7 +904,7 @@ export default function POS() {
         setIsRfidScanning(false);
         setRfidBuffer('');
         setRfidError(false);
-      }} title="Finalize Sale" maxWidth="max-w-6xl">
+      }} title="Finalize Sale" maxWidth="max-w-4xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column: Customer */}
           <div className="space-y-4">
@@ -1199,46 +1223,83 @@ export default function POS() {
               </div>
             )}
 
-            {/* Service Advisor & Mechanic - Staff Attribution */}
-            <div className="bg-gradient-to-r from-indigo-50 to-sky-50 rounded-xl p-4 border border-indigo-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-indigo-600" />
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Staff Attribution</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Service Advisor</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <select
-                      value={serviceAdvisorName}
-                      onChange={(e) => setServiceAdvisorName(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                    >
-                      <option value="">Select Advisor</option>
-                      {serviceAdvisors.map((entry) => (
-                        <option key={entry.name} value={entry.name}>{entry.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Mechanic</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            {/* Service Advisor - Always visible */}
+            {(serviceAdvisors.length > 0 || true) && (
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Service Advisor</label>
+              <select
+                value={serviceAdvisorName}
+                onChange={(e) => setServiceAdvisorName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">— None —</option>
+                {serviceAdvisors.map((entry) => (
+                  <option key={entry.name} value={entry.name}>{entry.name}</option>
+                ))}
+              </select>
+            </div>
+            )}
+
+            {/* Extra Roles - Collapsible */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+              <button
+                type="button"
+                onClick={() => setShowExtraRoles((current) => !current)}
+                className="flex w-full items-center justify-between text-sm font-semibold text-gray-700"
+              >
+                <span>{showExtraRoles ? 'Hide extra roles' : moreRolesLabel}</span>
+                <span className="text-xs text-gray-400">Optional</span>
+              </button>
+
+              {!showExtraRoles && extraRoleSummary && (
+                <p className="mt-2 text-xs text-gray-500">{extraRoleSummary}</p>
+              )}
+
+              {showExtraRoles && (
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mechanic</label>
                     <select
                       value={mechanicName}
                       onChange={(e) => setMechanicName(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 border border-sky-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="">Select Mechanic</option>
+                      <option value="">— None —</option>
                       {mechanics.map((entry) => (
                         <option key={entry.name} value={entry.name}>{entry.name}</option>
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tintner</label>
+                    <select
+                      value={tintnerName}
+                      onChange={(e) => setTintnerName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">— None —</option>
+                      {tintners.map((entry) => (
+                        <option key={entry.name} value={entry.name}>{entry.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Carwasher</label>
+                    <select
+                      value={carwasherName}
+                      onChange={(e) => setCarwasherName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">— None —</option>
+                      {carwashers.map((entry) => (
+                        <option key={entry.name} value={entry.name}>{entry.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Payment Method */}
@@ -1256,29 +1317,6 @@ export default function POS() {
                 <option value="dated_check">Dated Check</option>
                 <option value="post_dated_check">Post-Dated Check</option>
               </select>
-            </div>
-
-            <div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Amount Paid</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={displayedAmountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
-                  disabled={paymentMethod === 'card'}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-                  placeholder="Leave blank to auto-calculate"
-                />
-                <p className="mt-2 text-[11px] text-gray-500">
-                  {paymentMethod === 'card'
-                    ? 'Card payments are captured as fully paid after terminal approval.'
-                    : isDeferredPaymentMethod(paymentMethod)
-                      ? 'Leave blank to record the full amount as receivable until the check clears.'
-                      : 'Leave blank for full payment, or enter a lower amount to track a balance due.'}
-                </p>
-              </div>
             </div>
 
             {/* Discount */}

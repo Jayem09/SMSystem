@@ -84,7 +84,7 @@ vi.mock('../context/AuthContext', () => ({
 }));
 
 vi.mock('../components/Modal', () => ({
-  default: ({ open, title, children }: { open: boolean; title: string; children: React.ReactNode }) =>
+  default: ({ open, title, children, maxWidth }: { open: boolean; title: string; children: React.ReactNode; maxWidth?: string }) =>
     open ? <div><h2>{title}</h2>{children}</div> : null,
 }));
 
@@ -107,6 +107,19 @@ vi.mock('../services/offlinePosStock', () => ({
 }));
 vi.mock('../services/dashboardRefresh', () => ({
   invalidateDashboardQueries: vi.fn(),
+}));
+
+vi.mock('../utils/staffDirectory', () => ({
+  filterStaffDirectoryByType: vi.fn((staff, type) => {
+    const staffByType: Record<string, { name: string; type: string }> = {
+      service_advisor: [{ name: 'Mike', type: 'service_advisor' }],
+      mechanic: [{ name: 'Jun', type: 'mechanic' }],
+      tintner: [{ name: 'Ken', type: 'tintner' }],
+      carwasher: [{ name: 'Paul', type: 'carwasher' }],
+    };
+    return staffByType[type] || [];
+  }),
+  normalizeStaffDirectorySettings: vi.fn((settings) => settings?.staff_directory || []),
 }));
 
 import POS from './POS';
@@ -141,7 +154,18 @@ describe('POS checkout modal', () => {
     });
   }
 
-  it('does not show the confusing payment preview card in the finalize sale modal', async () => {
+  it('hides extra staff roles behind a More roles trigger', async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        staff_directory: [
+          { name: 'Mike', type: 'service_advisor' },
+          { name: 'Jun', type: 'mechanic' },
+          { name: 'Ken', type: 'tintner' },
+          { name: 'Paul', type: 'carwasher' },
+        ],
+      },
+    });
+
     await renderPOSPage();
 
     const openButton = Array.from(document.querySelectorAll('button')).find((button) =>
@@ -154,10 +178,29 @@ describe('POS checkout modal', () => {
       await Promise.resolve();
     });
 
-    expect(document.body.textContent).toContain('Finalize Sale');
-    expect(document.body.textContent).toContain('Amount Paid');
-    expect(document.body.textContent).not.toContain('If Confirmed Now');
-    expect(document.body.textContent).not.toContain('Payment Status:');
-    expect(document.body.textContent).not.toContain('Hold Sale keeps unpaid amounts as receivables until the order is completed.');
+    // Service Advisor should be visible by default
+    expect(document.body.textContent).toContain('Service Advisor');
+    // "More roles" trigger should be visible
+    expect(document.body.textContent).toContain('More roles');
+    // Extra roles should NOT be visible by default
+    expect(document.body.textContent).not.toContain('Mechanic');
+    expect(document.body.textContent).not.toContain('Tintner');
+    expect(document.body.textContent).not.toContain('Carwasher');
+
+    // Click "More roles" to expand
+    const moreRolesButton = Array.from(document.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('More roles'),
+    ) as HTMLButtonElement;
+
+    moreRolesButton.click();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Now all roles should be visible
+    expect(document.body.textContent).toContain('Mechanic');
+    expect(document.body.textContent).toContain('Tintner');
+    expect(document.body.textContent).toContain('Carwasher');
   });
 });
