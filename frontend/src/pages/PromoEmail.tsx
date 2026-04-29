@@ -45,7 +45,14 @@ export default function PromoEmail() {
   const [recipientType, setRecipientType] = useState<'customers' | 'suppliers'>('customers');
   const [selectedRecipients, setSelectedRecipients] = useState<Recipient[]>([]);
   const [search, setSearch] = useState('');
-  const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number; failedEmails?: string[] } | null>(null);
+
+  // Set default validity to 7 days from now
+  useEffect(() => {
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 7);
+    setValidUntil(defaultDate.toISOString().split('T')[0]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -300,6 +307,32 @@ export default function PromoEmail() {
                 />
               </div>
 
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    const items = data.filter(item => 
+                      item.name.toLowerCase().includes(search.toLowerCase()) || 
+                      item.email.toLowerCase().includes(search.toLowerCase())
+                    );
+                    const newSelected = items.map(item => ({ email: item.email, name: item.name }));
+                    setSelectedRecipients(prev => {
+                      const existing = prev.map(r => r.email);
+                      const toAdd = newSelected.filter(r => !existing.includes(r.email));
+                      return [...prev, ...toAdd];
+                    });
+                  }}
+                  className="flex-1 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Select All (filtered)
+                </button>
+                <button
+                  onClick={() => setSelectedRecipients([])}
+                  className="flex-1 py-2 text-xs font-bold text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+
               {selectedRecipients.length > 0 && (
                 <p className="text-sm text-gray-500">
                   {selectedRecipients.length} recipient{selectedRecipients.length !== 1 ? 's' : ''} selected
@@ -309,14 +342,21 @@ export default function PromoEmail() {
           </div>
 
           {result && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
-              <Check className="w-5 h-5 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-800">
-                Sent to {result.success} recipients ({result.failed} failed)
-              </span>
-              <button onClick={() => setResult(null)} className="ml-auto text-emerald-600 hover:text-emerald-800">
-                <X className="w-4 h-4" />
-              </button>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-800">
+                  Sent to {result.success} recipients ({result.failed} failed)
+                </span>
+                <button onClick={() => setResult(null)} className="ml-auto text-emerald-600 hover:text-emerald-800">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {result.failedEmails && result.failedEmails.length > 0 && (
+                <div className="mt-3 text-xs text-red-600">
+                  Failed: {result.failedEmails.join(', ')}
+                </div>
+              )}
             </div>
           )}
 
