@@ -362,6 +362,7 @@ export default function Staff() {
                   <p className="text-xs text-gray-500">
                     {entry.type === 'service_advisor' ? 'Service Advisor' :
                      entry.type === 'mechanic' ? 'Mechanic' :
+                     entry.type === 'tintner' ? 'Tintner' :
                      entry.type === 'carwasher' ? 'Carwasher' : entry.type}
                   </p>
                 </div>
@@ -405,6 +406,7 @@ export default function Staff() {
             >
               <option value="service_advisor">Service Advisor</option>
               <option value="mechanic">Mechanic</option>
+              <option value="tintner">Tintner</option>
               <option value="carwasher">Carwasher</option>
             </select>
           </div>

@@ -122,4 +122,24 @@ describe('Staff directory management', () => {
     expect(document.body.textContent).toContain('Mechanic');
     expect(document.body.textContent).toContain('Save Staff Name');
   });
+
+  it('shows Tintner as an addable named staff role', async () => {
+    mockApiPost.mockResolvedValue({ data: { message: 'ok' } });
+    await renderStaffPage();
+
+    const openButton = Array.from(document.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Add Staff Name'),
+    ) as HTMLButtonElement;
+
+    openButton.click();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).toContain('Service Advisor');
+    expect(document.body.textContent).toContain('Mechanic');
+    expect(document.body.textContent).toContain('Tintner');
+    expect(document.body.textContent).toContain('Carwasher');
+  });
 });
