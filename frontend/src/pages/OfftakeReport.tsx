@@ -16,17 +16,21 @@ function formatCurrency(n: number) {
 
 const QUICK_RANGES = [
   { label: 'Today', getDates: () => { const d = getLocalDateValue(); return { start: d, end: d }; } },
-  { label: 'This Week', getDates: () => {
-    const now = new Date();
-    const mon = new Date(now);
-    mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    return { start: mon.toLocaleDateString('en-CA'), end: now.toLocaleDateString('en-CA') };
-  }},
-  { label: 'This Month', getDates: () => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: first.toLocaleDateString('en-CA'), end: now.toLocaleDateString('en-CA') };
-  }},
+  {
+    label: 'This Week', getDates: () => {
+      const now = new Date();
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      return { start: mon.toLocaleDateString('en-CA'), end: now.toLocaleDateString('en-CA') };
+    }
+  },
+  {
+    label: 'This Month', getDates: () => {
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { start: first.toLocaleDateString('en-CA'), end: now.toLocaleDateString('en-CA') };
+    }
+  },
 ];
 
 export default function OfftakeReport() {
@@ -85,7 +89,7 @@ export default function OfftakeReport() {
     if (!isSuperAdmin) return;
     api.get('/api/branches').then(res => {
       setBranches(res.data.branches ?? []);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [isSuperAdmin]);
 
   // Fetch off-take rows
@@ -102,7 +106,7 @@ export default function OfftakeReport() {
       if (itemName) params.set('item_name', itemName);
       if (paymentStatus !== 'all') params.set('payment_status', paymentStatus);
       if (serviceAdvisor) params.set('service_advisor', serviceAdvisor);
-      if (mechanic) params.set('mechanic', mechanic);
+      if (Personel) params.set('Personel', Personel);
       if (tintner) params.set('tintner', tintner);
       if (carwasher) params.set('carwasher', carwasher);
       if (branchFilter !== 'ALL') params.set('branch_id', branchFilter);
@@ -413,11 +417,10 @@ export default function OfftakeReport() {
                     {showTintnerColumn && <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.tintner || ''}</td>}
                     {showCarwasherColumn && <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.carwasher || ''}</td>}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        row.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
-                        row.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${row.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
+                          row.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                        }`}>
                         {row.payment_status}
                       </span>
                     </td>
