@@ -58,6 +58,9 @@ export interface OfftakeReportRow {
   customer_name: string;
   branch_name: string;
   service_advisor: string;
+  mechanic: string;
+  tintner: string;
+  carwasher: string;
   payment_status: string;
   total_amount: number;
   amount_paid: number;
@@ -266,7 +269,10 @@ export function buildOfftakeExportRows(rows: OfftakeReportRow[]) {
     'Date': row.invoice_date,
     'Customer': row.customer_name,
     'Branch': row.branch_name,
-    'Salesperson': row.service_advisor,
+    'Service Advisor': row.service_advisor,
+    'Mechanic': row.mechanic,
+    'Tintner': row.tintner,
+    'Carwasher': row.carwasher,
     'Payment Status': row.payment_status,
     'Total Amount': row.total_amount,
     'Amount Paid': row.amount_paid,
