@@ -106,7 +106,7 @@ export default function OfftakeReport() {
       if (itemName) params.set('item_name', itemName);
       if (paymentStatus !== 'all') params.set('payment_status', paymentStatus);
       if (serviceAdvisor) params.set('service_advisor', serviceAdvisor);
-      if (Personel) params.set('Personel', Personel);
+      if (mechanic) params.set('mechanic', mechanic);
       if (tintner) params.set('tintner', tintner);
       if (carwasher) params.set('carwasher', carwasher);
       if (branchFilter !== 'ALL') params.set('branch_id', branchFilter);
@@ -129,6 +129,7 @@ export default function OfftakeReport() {
   const handleExport = async () => {
     try {
       await exportOfftakeToExcel(rows, filters);
+      showToast('Report downloaded successfully', 'success');
     } catch {
       showToast('Failed to export report', 'error');
     }
