@@ -119,6 +119,9 @@ func TestBuildOfftakeRowsShapesInvoiceLevelData(t *testing.T) {
 			CustomerName:   "John Doe",
 			BranchName:     "LIPA A",
 			ServiceAdvisor: "Mike",
+			Mechanic:       "Jun",
+			Tintner:        "Ken",
+			Carwasher:      "Paul",
 			PaymentStatus:  "paid",
 			TotalAmount:    12500,
 			AmountPaid:     12500,
@@ -139,5 +142,55 @@ func TestBuildOfftakeRowsShapesInvoiceLevelData(t *testing.T) {
 
 	if rows[0].QuantityTotal != 3 {
 		t.Fatalf("expected quantity total 3, got %d", rows[0].QuantityTotal)
+	}
+
+	// Verify Mechanic is passed through
+	if rows[0].Mechanic != "Jun" {
+		t.Fatalf("expected mechanic to be 'Jun', got %q", rows[0].Mechanic)
+	}
+
+	// Verify Tintner is passed through
+	if rows[0].Tintner != "Ken" {
+		t.Fatalf("expected tintner to be 'Ken', got %q", rows[0].Tintner)
+	}
+
+	// Verify Carwasher is passed through
+	if rows[0].Carwasher != "Paul" {
+		t.Fatalf("expected carwasher to be 'Paul', got %q", rows[0].Carwasher)
+	}
+}
+
+func TestBuildOfftakeRowsKeepsOptionalRolesBlankWhenUnassigned(t *testing.T) {
+	raw := []offtakeRawRow{
+		{
+			OrderID:        42,
+			ReceiptType:    "SI",
+			CreatedAt:      time.Date(2026, 4, 10, 9, 15, 0, 0, time.UTC),
+			CustomerName:   "John Doe",
+			BranchName:     "LIPA A",
+			ServiceAdvisor: "Mike",
+			Mechanic:       "",
+			Tintner:        "",
+			Carwasher:      "",
+			PaymentStatus:  "paid",
+			TotalAmount:    12500,
+			AmountPaid:     12500,
+			BalanceDue:     0,
+			QuantityTotal:  3,
+			ItemSummary:    "Accelera Tire x2",
+		},
+	}
+
+	rows := buildOfftakeRows(raw)
+
+	// Optional roles must stay blank
+	if rows[0].Mechanic != "" {
+		t.Fatalf("expected mechanic to stay blank, got %q", rows[0].Mechanic)
+	}
+	if rows[0].Tintner != "" {
+		t.Fatalf("expected tintner to stay blank, got %q", rows[0].Tintner)
+	}
+	if rows[0].Carwasher != "" {
+		t.Fatalf("expected carwasher to stay blank, got %q", rows[0].Carwasher)
 	}
 }

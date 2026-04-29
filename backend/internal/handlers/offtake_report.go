@@ -23,6 +23,8 @@ type OfftakeReportRow struct {
 	BranchName     string  `json:"branch_name"`
 	ServiceAdvisor string  `json:"service_advisor"`
 	Mechanic       string  `json:"mechanic"`
+	Tintner        string  `json:"tintner"`
+	Carwasher      string  `json:"carwasher"`
 	PaymentStatus  string  `json:"payment_status"`
 	TotalAmount    float64 `json:"total_amount"`
 	AmountPaid     float64 `json:"amount_paid"`
@@ -44,6 +46,8 @@ type offtakeRawRow struct {
 	BranchName     string    `gorm:"column:branch_name"`
 	ServiceAdvisor string    `gorm:"column:service_advisor"`
 	Mechanic       string    `gorm:"column:mechanic"`
+	Tintner        string    `gorm:"column:tintner"`
+	Carwasher      string    `gorm:"column:carwasher"`
 	PaymentStatus  string    `gorm:"column:payment_status"`
 	TotalAmount    float64   `gorm:"column:total_amount"`
 	AmountPaid     float64   `gorm:"column:amount_paid"`
@@ -128,6 +132,8 @@ func buildOfftakeRows(raw []offtakeRawRow) []OfftakeReportRow {
 			BranchName:     row.BranchName,
 			ServiceAdvisor: row.ServiceAdvisor,
 			Mechanic:       row.Mechanic,
+			Tintner:        row.Tintner,
+			Carwasher:      row.Carwasher,
 			PaymentStatus:  row.PaymentStatus,
 			TotalAmount:    row.TotalAmount,
 			AmountPaid:     row.AmountPaid,
@@ -153,8 +159,10 @@ func (h *ReportHandler) GetOfftake(c *gin.Context) {
 			orders.created_at,
 			COALESCE(customers.name, orders.guest_name, 'Walk-in') AS customer_name,
 			COALESCE(branches.name, '') AS branch_name,
-			COALESCE(NULLIF(TRIM(orders.service_advisor_name), ''), 'Unassigned') AS service_advisor,
-			COALESCE(NULLIF(TRIM(orders.mechanic_name), ''), 'Unassigned') AS mechanic,
+			COALESCE(NULLIF(TRIM(orders.service_advisor_name), ''), '') AS service_advisor,
+			COALESCE(NULLIF(TRIM(orders.mechanic_name), ''), '') AS mechanic,
+			COALESCE(NULLIF(TRIM(orders.tintner_name), ''), '') AS tintner,
+			COALESCE(NULLIF(TRIM(orders.carwasher_name), ''), '') AS carwasher,
 			orders.payment_status,
 			orders.total_amount,
 			orders.amount_paid,
