@@ -8,7 +8,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import {
   addStaffDirectoryEntry,
-  filterStaffDirectoryByType,
   normalizeStaffDirectorySettings,
   removeStaffDirectoryEntry,
   type StaffDirectoryEntry,

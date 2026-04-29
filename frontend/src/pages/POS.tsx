@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import { printReceipt } from '../components/Receipt';
 import { printDeliveryReceipt } from '../components/DeliveryReceipt';
 import {
-  Search, ShoppingCart, Trash2, Printer, CheckCircle, Package, User, CreditCard, FileText, Users
+  Search, ShoppingCart, Trash2, Printer, CheckCircle, Package, User, Users
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { getIsOfflineMode } from '../context/AuthContext';
@@ -147,7 +147,7 @@ function formatMoneyInputValue(value: number) {
 export default function POS() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts, lastAddBlocked } = usePOS();
+  const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts } = usePOS();
   
   // Fetch settings for staff directory dropdowns
   const { data: settingsData } = useQuery({
@@ -325,12 +325,6 @@ export default function POS() {
 
   const finalTotal = Math.max(0, posSubtotal - parseFloat(discount || '0'));
   const earnedPoints = Math.floor(posSubtotal / 200);
-  const previewPayment = resolveCheckoutPayment(
-    finalTotal,
-    'completed',
-    paymentMethod,
-    paymentMethod === 'card' ? finalTotal : parseAmountPaidInput(amountPaid),
-  );
   const displayedAmountPaid = paymentMethod === 'card' ? formatMoneyInputValue(finalTotal) : amountPaid;
 
   const handleAddToCart = (product: Product) => {
@@ -1264,7 +1258,7 @@ export default function POS() {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Amount Paid</label>
                 <input
@@ -1284,12 +1278,6 @@ export default function POS() {
                       ? 'Leave blank to record the full amount as receivable until the check clears.'
                       : 'Leave blank for full payment, or enter a lower amount to track a balance due.'}
                 </p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">If Confirmed Now</p>
-                <p className="text-xl font-black text-gray-900">₱{previewPayment.balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Payment Status: {previewPayment.paymentStatus}</p>
-                <p className="mt-2 text-[11px] text-gray-500">Hold Sale keeps unpaid amounts as receivables until the order is completed.</p>
               </div>
             </div>
 
