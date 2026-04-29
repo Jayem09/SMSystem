@@ -1,4 +1,4 @@
-export type StaffDirectoryType = 'service_advisor' | 'mechanic' | 'carwasher';
+export type StaffDirectoryType = 'service_advisor' | 'mechanic' | 'tintner' | 'carwasher';
 
 export interface StaffDirectoryEntry {
   name: string;
@@ -8,6 +8,7 @@ export interface StaffDirectoryEntry {
 const STAFF_DIRECTORY_TYPES = new Set<StaffDirectoryType>([
   'service_advisor',
   'mechanic',
+  'tintner',
   'carwasher',
 ]);
 
@@ -21,6 +22,8 @@ function toLabel(type: StaffDirectoryType): string {
       return 'Service Advisor';
     case 'mechanic':
       return 'Mechanic';
+    case 'tintner':
+      return 'Tintner';
     case 'carwasher':
       return 'Carwasher';
   }

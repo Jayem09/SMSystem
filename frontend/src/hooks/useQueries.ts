@@ -2,7 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { get, post, put, del } from '../api/axios';
 import type { QueryParams } from '../types/api';
 import { getIsOfflineMode } from '../context/AuthContext';
-import offlineStorage from '../services/offlineStorage';
+import offlineStorage, { type LocalCustomer } from '../services/offlineStorage';
+import {
+  attachCategoriesToProducts,
+  buildCachedPosProducts,
+  dedupePosCustomers,
+  type CachedPosCategory,
+  type CachedPosCustomer,
+  type CachedPosData,
+  mapLocalCustomerToCachedPosCustomer,
+} from '../services/posDataNormalization';
 
 export function useProductsQuery(params?: QueryParams) {
   return useQuery({
@@ -167,9 +176,12 @@ export function usePOSData(branchId?: string) {
   // POS is always branch-scoped. If no concrete branch is selected, do not fetch products.
   return useQuery({
     queryKey: ['pos', 'data', branchId],
-    queryFn: async () => {
-      const categories = offlineStorage.getCategories() as { id: number; name: string }[];
-      const customers = offlineStorage.getCustomers();
+    queryFn: async (): Promise<CachedPosData> => {
+      const categories = offlineStorage.getCategories() as CachedPosCategory[];
+      const customers = offlineStorage
+        .getCustomers()
+        .map((customer) => mapLocalCustomerToCachedPosCustomer(customer))
+        .filter((customer): customer is CachedPosCustomer => customer !== null);
 
       if (!branchId) {
         return {
@@ -188,37 +200,13 @@ export function usePOSData(branchId?: string) {
             get('/api/customers'),
           ]);
           
-          const rawProducts = (pRes.data as { products?: unknown[] }).products 
-            || (pRes.data as { data?: unknown[] }).data 
+          const rawProducts = (pRes.data as { products?: Record<string, unknown>[] }).products 
+            || (pRes.data as { data?: Record<string, unknown>[] }).data 
             || [];
-          const categories = (cRes.data as { categories?: unknown[] }).categories || [];
-          const rawCustomers = (custRes.data as { customers?: unknown[] }).customers || [];
-          
-          // Transform products to match POS format
-          const products = (rawProducts as object[]).map((p) => {
-            const prod = p as Record<string, unknown>;
-            return {
-              ...prod,
-              branch_stock: Number(prod.branch_stock ?? 0),
-              category: (categories as { id: number }[]).find((c) => c.id === prod.category_id) || null,
-            };
-          });
-          
-          // Deduplicate and save customers
-          const uniqueCustomersMap = new Map<string, object>();
-          (rawCustomers as object[]).forEach((c) => {
-            const cust = c as Record<string, unknown>;
-            const phone = String(cust.phone || '');
-            if (phone && !uniqueCustomersMap.has(phone)) {
-              uniqueCustomersMap.set(phone, {
-                ...cust,
-                rfidCardId: cust.rfid_card_id,
-                loyaltyPoints: (cust.loyalty_points as number) ?? 0,
-                synced: true,
-              });
-            }
-          });
-          const uniqueCustomers = Array.from(uniqueCustomersMap.values());
+          const categories = (cRes.data as { categories?: CachedPosCategory[] }).categories || [];
+          const rawCustomers = (custRes.data as { customers?: Record<string, unknown>[] }).customers || [];
+          const products = buildCachedPosProducts(rawProducts, categories);
+          const uniqueCustomers = dedupePosCustomers(rawCustomers);
           
           // Cache for offline
           offlineStorage.saveProductsByBranch(branchId, products);
@@ -227,7 +215,7 @@ export function usePOSData(branchId?: string) {
           
           return {
             products,
-            categories: categories as { id: number; name: string }[],
+            categories,
             customers: uniqueCustomers,
           };
         } catch (err) {
@@ -237,18 +225,10 @@ export function usePOSData(branchId?: string) {
       }
       
       // OFFLINE or API failed - load from cached storage
-      const products = offlineStorage.getProductsByBranch(branchId);
-      
-      const productsWithCategory = products.map((p) => {
-        const prod = p as Record<string, unknown>;
-        return {
-          ...prod,
-          category: (categories as { id: number }[]).find((c) => c.id === prod.category_id) || null,
-        };
-      });
+      const products = attachCategoriesToProducts(offlineStorage.getProductsByBranch(branchId), categories);
       
       return {
-        products: productsWithCategory,
+        products,
         categories,
         customers,
       };
@@ -262,8 +242,8 @@ export function usePOSData(branchId?: string) {
 export function findCustomerByRfid(rfidCode: string) {
   const customers = offlineStorage.getCustomers();
   // Look for RFID match in cached customers
-  return customers.find((c) => {
-    const cust = c as Record<string, unknown>;
-    return cust.rfid_card_id === rfidCode || cust.rfidCardId === rfidCode;
+  return customers.find((customer) => {
+    const legacyCustomer = customer as LocalCustomer & { rfid_card_id?: string };
+    return legacyCustomer.rfid_card_id === rfidCode || customer.rfidCardId === rfidCode;
   });
 }

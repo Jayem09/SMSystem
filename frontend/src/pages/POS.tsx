@@ -151,12 +151,13 @@ export default function POS() {
   
   // Fetch settings for staff directory dropdowns
   const { data: settingsData } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ['settings', user?.id],
     queryFn: async () => {
       const res = await api.get('/api/settings');
       return res.data as Record<string, unknown>;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user,
   });
   
   const staffDirectory = settingsData ? normalizeStaffDirectorySettings(settingsData) : [];
@@ -184,7 +185,7 @@ export default function POS() {
     carwasherName ? `Carwasher: ${carwasherName}` : '',
   ].filter(Boolean).join(' • ');
 
-  const moreRolesLabel = extraRoleSummary ? 'Edit extra roles' : '+ More roles';
+  const moreRolesLabel = extraRoleSummary ? 'Edit Personnel' : '+ Personnel';
   const [guestPhone, setGuestPhone] = useState('');
   const [tin, setTin] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
@@ -1247,7 +1248,7 @@ export default function POS() {
                 onClick={() => setShowExtraRoles((current) => !current)}
                 className="flex w-full items-center justify-between text-sm font-semibold text-gray-700"
               >
-                <span>{showExtraRoles ? 'Hide extra roles' : moreRolesLabel}</span>
+                <span>{showExtraRoles ? 'Hide Personnel' : moreRolesLabel}</span>
                 <span className="text-xs text-gray-400">Optional</span>
               </button>
 

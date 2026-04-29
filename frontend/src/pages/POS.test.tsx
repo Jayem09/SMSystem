@@ -180,16 +180,16 @@ describe('POS checkout modal', () => {
 
     // Service Advisor should be visible by default
     expect(document.body.textContent).toContain('Service Advisor');
-    // "More roles" trigger should be visible
-    expect(document.body.textContent).toContain('More roles');
+    // "Personnel" trigger should be visible
+    expect(document.body.textContent).toContain('Personnel');
     // Extra roles should NOT be visible by default
     expect(document.body.textContent).not.toContain('Mechanic');
     expect(document.body.textContent).not.toContain('Tintner');
     expect(document.body.textContent).not.toContain('Carwasher');
 
-    // Click "More roles" to expand
+    // Click "Personnel" to expand
     const moreRolesButton = Array.from(document.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('More roles'),
+      button.textContent?.includes('Personnel'),
     ) as HTMLButtonElement;
 
     moreRolesButton.click();
