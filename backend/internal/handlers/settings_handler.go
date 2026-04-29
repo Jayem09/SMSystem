@@ -70,8 +70,10 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 		fmt.Printf("[Settings] Processing key=%s, value_len=%d\n", key, len(strValue))
 
 		setting := models.Setting{Key: key, Value: strValue}
+		
+		// Use raw SQL to avoid key being treated as reserved word
 		var existing models.Setting
-		err := tx.First(&existing, "key = ?", key).Error
+		err := tx.Where("`key` = ?", key).First(&existing).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				fmt.Printf("[Settings] Creating NEW key=%s\n", key)
