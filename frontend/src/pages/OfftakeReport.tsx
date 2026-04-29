@@ -296,7 +296,7 @@ export default function OfftakeReport() {
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder="Mechanic"
+              placeholder="Personnel"
               value={mechanic}
               onChange={(e) => setMechanic(e.target.value)}
               className="text-sm text-gray-700 outline-none w-full"
@@ -378,7 +378,7 @@ export default function OfftakeReport() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Branch</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Salesperson</th>
-                {showMechanicColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mechanic</th>}
+                {showMechanicColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Personnel</th>}
                 {showTintnerColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Tintner</th>}
                 {showCarwasherColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Carwasher</th>}
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Status</th>
