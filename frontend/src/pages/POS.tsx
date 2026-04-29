@@ -162,6 +162,8 @@ export default function POS() {
   const staffDirectory = settingsData ? normalizeStaffDirectorySettings(settingsData) : [];
   const serviceAdvisors = filterStaffDirectoryByType(staffDirectory, 'service_advisor');
   const mechanics = filterStaffDirectoryByType(staffDirectory, 'mechanic');
+  const tintners = filterStaffDirectoryByType(staffDirectory, 'tintner');
+  const carwashers = filterStaffDirectoryByType(staffDirectory, 'carwasher');
   
   const { products, categories, customers, cart, search, selectedCategory, loading, error } = state;
   const isSuperAdmin = user?.role === 'super_admin';
@@ -170,6 +172,8 @@ export default function POS() {
   const [customerId, setCustomerId] = useState('');
   const [serviceAdvisorName, setServiceAdvisorName] = useState('');
   const [mechanicName, setMechanicName] = useState('');
+  const [tintnerName, setTintnerName] = useState('');
+  const [carwasherName, setCarwasherName] = useState('');
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [tin, setTin] = useState('');
@@ -405,6 +409,8 @@ export default function POS() {
         withholdingTaxRate: parseFloat(withholdingTaxRate) || 0,
         serviceAdvisorName: serviceAdvisorName,
         mechanicName: mechanicName,
+        tintnerName: tintnerName,
+        carwasherName: carwasherName,
         rewardId: selectedReward?.id || null,
         rewardPoints: selectedReward?.points_required || 0,
         items: JSON.stringify(cart.map(item => ({
@@ -608,6 +614,8 @@ export default function POS() {
         guest_phone: !customerId ? guestPhone : '',
         service_advisor_name: serviceAdvisorName,
         mechanic_name: mechanicName,
+        tintner_name: tintnerName,
+        carwasher_name: carwasherName,
         payment_method: paymentMethod,
         amount_paid: checkoutPayment.amountPaid,
         discount_amount: parseFloat(discount),
@@ -1230,6 +1238,36 @@ export default function POS() {
               >
                 <option value="">Select Mechanic</option>
                 {mechanics.map((entry) => (
+                  <option key={entry.name} value={entry.name}>{entry.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tintner */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tintner</label>
+              <select
+                value={tintnerName}
+                onChange={(e) => setTintnerName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select Tintner</option>
+                {tintners.map((entry) => (
+                  <option key={entry.name} value={entry.name}>{entry.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Carwasher */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Carwasher</label>
+              <select
+                value={carwasherName}
+                onChange={(e) => setCarwasherName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select Carwasher</option>
+                {carwashers.map((entry) => (
                   <option key={entry.name} value={entry.name}>{entry.name}</option>
                 ))}
               </select>
