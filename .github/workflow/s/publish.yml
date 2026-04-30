@@ -44,7 +44,7 @@ jobs:
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
       - name: build tauri app (macOS)
-        uses: tauri-apps/tauri-action@v0.6.2
+        uses: tauri-apps/tauri-action@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -92,7 +92,7 @@ jobs:
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
       - name: build tauri app (Windows)
-        uses: tauri-apps/tauri-action@v0.6.2
+        uses: tauri-apps/tauri-action@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
