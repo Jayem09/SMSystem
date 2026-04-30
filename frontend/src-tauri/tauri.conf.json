@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SMSytem",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "identifier": "com.smsystem.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -49,7 +49,13 @@
     ],
     "macOS": {
       "minimumSystemVersion": "10.13",
-      "entitlements": "./SMSytem.entitlements"
+      "entitlements": "./SMSytem.entitlements",
+      "signingIdentity": null,
+      "notarization": {
+        "teamId": "$APPLE_TEAM_ID",
+        "appleId": "$APPLE_ID",
+        "appleIdPassword": "$APPLE_ID_PASSWORD"
+      }
     },
     "shortDescription": "SMS Sales Management System",
     "longDescription": "A comprehensive desktop application for managing sales, inventory, customers, and more.",
