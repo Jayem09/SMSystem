@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
@@ -83,7 +82,6 @@ func (h *BranchHandler) Create(c *gin.Context) {
 
 func (h *BranchHandler) Update(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("Branch Update: id=%d", id)
 	var branch models.Branch
 	if err := database.DB.First(&branch, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
@@ -102,7 +100,6 @@ func (h *BranchHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("Branch Update input:%+v", input)
 
 	branch.Name = input.Name
 	branch.Code = input.Code

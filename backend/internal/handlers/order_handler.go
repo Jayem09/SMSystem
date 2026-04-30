@@ -286,9 +286,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			case nil:
 				// Use existing customer
 				order.CustomerID = &existingCustomer.ID
-				if err := tx.Save(&order).Error; err != nil {
-					fmt.Printf("Warning: failed to link order to existing customer: %v\n", err)
-				}
+				_ = tx.Save(&order).Error // ignore error - not critical
 			case gorm.ErrRecordNotFound:
 				// Create new customer
 				newCustomer := models.Customer{
@@ -297,12 +295,10 @@ func (h *OrderHandler) Create(c *gin.Context) {
 				}
 				if err := tx.Create(&newCustomer).Error; err == nil {
 					order.CustomerID = &newCustomer.ID
-					if err := tx.Save(&order).Error; err != nil {
-						fmt.Printf("Warning: failed to link order to customer: %v\n", err)
-					}
+					_ = tx.Save(&order).Error // ignore error - not critical
 				}
 			default:
-				fmt.Printf("Warning: error checking for existing customer: %v\n", err)
+				// ignore - customer check error, not critical
 			}
 		}
 
@@ -412,9 +408,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 				PointsRedeemed: float64(input.RewardPoints),
 				Remarks:        fmt.Sprintf("Redeemed %d points for free reward: %s (Order #%d)", input.RewardPoints, rewardProduct.Name, order.ID),
 			}
-			if err := tx.Create(&ledgerEntry).Error; err != nil {
-				fmt.Printf("Warning: failed to create loyalty ledger entry: %v\n", err)
-			}
+			_ = tx.Create(&ledgerEntry).Error // ignore - not critical
 		}
 
 		// Handle points earned if order is completed
@@ -424,10 +418,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 				// Calculate points earned: 1 point per ₱200 spent
 				pointsEarned := finalTotal / 200.0
 				if pointsEarned > 0 {
-					if err := tx.Model(&customer).Update("loyalty_points", customer.LoyaltyPoints+pointsEarned).Error; err != nil {
-						// Log but don't fail the order
-						fmt.Printf("Warning: failed to add loyalty points: %v\n", err)
-					}
+					_ = tx.Model(&customer).Update("loyalty_points", customer.LoyaltyPoints+pointsEarned).Error // ignore - not critical
 
 					// Create loyalty ledger entry for earning
 					ledgerEntry := models.LoyaltyLedger{
@@ -436,9 +427,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 						PointsEarned: pointsEarned,
 						Remarks:      fmt.Sprintf("Earned %v points from ₱%.2f purchase on Order #%d", pointsEarned, finalTotal, order.ID),
 					}
-					if err := tx.Create(&ledgerEntry).Error; err != nil {
-						fmt.Printf("Warning: failed to create loyalty ledger entry: %v\n", err)
-					}
+					_ = tx.Create(&ledgerEntry).Error // ignore - not critical
 				}
 			}
 		}

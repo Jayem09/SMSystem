@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -85,12 +84,9 @@ func (h *TransferHandler) List(c *gin.Context) {
 
 	var transfers []models.StockTransfer
 	if err := effectiveQuery.Order("created_at DESC").Find(&transfers).Error; err != nil {
-		log.Printf("TRANSFER LIST ERROR: Role=%s, BranchID=%v, Error=%v", userRoleStr, branchIDValue, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stock transfers"})
 		return
 	}
-
-	log.Printf("TRANSFER LIST SUCCESS: User=%s, BranchID=%v, Found=%d", userRoleStr, branchID, len(transfers))
 
 	c.JSON(http.StatusOK, gin.H{
 		"transfers": transfers,
@@ -128,8 +124,6 @@ func (h *TransferHandler) GetPendingCounts(c *gin.Context) {
 
 		database.DB.Model(&models.StockTransfer{}).Where("destination_branch_id = ? AND status = ?", branchID, models.TransferStatusInTransit).Count(&receivingCount)
 	}
-
-	log.Printf("PENDING COUNTS DEBUG: BranchID=%v, Role=%v, RoleStr=%s, Incoming=%d, Receiving=%d", branchIDValue, userRole, userRoleStr, incomingCount, receivingCount)
 
 	c.JSON(http.StatusOK, gin.H{
 		"incoming_pending": int(incomingCount),
@@ -178,8 +172,6 @@ func (h *TransferHandler) Create(c *gin.Context) {
 			branchID = uint(u64)
 		}
 	}
-
-	log.Printf("TRANSFER CREATE: UserID=%v, UserBranchID=%v, TargetSource=%v, TargetDest=%v", userID, branchID, input.SourceBranchID, input.DestinationBranchID)
 
 	var transfer models.StockTransfer
 
@@ -293,9 +285,6 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 	oldStatus := transfer.Status
 	newStatus := input.Status
 
-	log.Printf("TRANSFER UPDATE: ID=%d, Ref=%s, UserID=%d, BranchID=%d, Role=%s, %s -> %s",
-		transfer.ID, transfer.ReferenceNumber, userID, userBranchID, userRole, oldStatus, newStatus)
-
 	if oldStatus == newStatus {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status is already " + newStatus})
 		return
@@ -392,15 +381,9 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 
 				var sourceBatches []models.Batch
 				remaining := item.Quantity
-				log.Printf("STOCK DEDUCTION: ProductID=%d, SourceBranchID=%d, RemainingNeeded=%d", product.ID, transfer.SourceBranchID, remaining)
 
 				if err := tx.Where("product_id = ? AND branch_id = ? AND quantity > 0", product.ID, transfer.SourceBranchID).Order("expiry_date ASC").Find(&sourceBatches).Error; err != nil {
 					return err
-				}
-				log.Printf("STOCK DEDUCTION: Found %d batches for ProductID=%d at BranchID=%d", len(sourceBatches), product.ID, transfer.SourceBranchID)
-
-				for _, b := range sourceBatches {
-					log.Printf("  - Batch ID: %d, Qty: %d", b.ID, b.Quantity)
 				}
 
 				for i := range sourceBatches {
@@ -506,7 +489,7 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 					sourceBranch.Name,
 					destBranch.Name,
 				); err != nil {
-					log.Printf("[TRANSFER] Email to source branch %s failed: %v", sourceBranch.Name, err)
+					// ignore - email failure not critical
 				}
 			}()
 		}
@@ -522,7 +505,7 @@ func (h *TransferHandler) UpdateStatus(c *gin.Context) {
 					sourceBranch.Name,
 					destBranch.Name,
 				); err != nil {
-					log.Printf("[TRANSFER] Email to destination branch %s failed: %v", destBranch.Name, err)
+					// ignore - email failure not critical
 				}
 			}()
 		}

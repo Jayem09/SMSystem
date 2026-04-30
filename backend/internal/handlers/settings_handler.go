@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 
 	"smsystem-backend/internal/database"
@@ -52,10 +50,6 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 		return
 	}
 
-	// Force stdout flush
-	fmt.Println("[Settings] UpdateBulk called with keys:", getMapKeys(input))
-	log.Println("[Settings] UpdateBulk called with keys:", getMapKeys(input))
-
 	tx := database.DB.Begin()
 	for key, value := range input {
 		strValue := ""
@@ -67,41 +61,32 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 			strValue = string(bytes)
 		}
 
-		fmt.Printf("[Settings] Processing key=%s, value_len=%d\n", key, len(strValue))
-
 		setting := models.Setting{Key: key, Value: strValue}
-		
+
 		// Use raw SQL to avoid key being treated as reserved word
 		var existing models.Setting
 		err := tx.Where("`key` = ?", key).First(&existing).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				fmt.Printf("[Settings] Creating NEW key=%s\n", key)
 				if err := tx.Create(&setting).Error; err != nil {
-					fmt.Printf("[Settings] Create FAILED: %v\n", err)
 					tx.Rollback()
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Create failed: " + err.Error()})
 					return
 				}
 			} else {
-				fmt.Printf("[Settings] Query error: %v\n", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Query failed: " + err.Error()})
 				return
 			}
 		} else {
-			fmt.Printf("[Settings] Updating existing key=%s, old_value_len=%d\n", key, len(existing.Value))
 			if err := tx.Model(&existing).Update("value", strValue).Error; err != nil {
-				fmt.Printf("[Settings] Update FAILED: %v\n", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed: " + err.Error()})
 				return
 			}
 		}
-		fmt.Printf("[Settings] Key=%s saved successfully\n", key)
 	}
 	tx.Commit()
-	fmt.Println("[Settings] All settings saved successfully!")
 
 	currentUserID, _ := c.Get("userID")
 	if currentUserID != nil {
@@ -109,12 +94,4 @@ func (h *SettingsHandler) UpdateBulk(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Settings updated successfully"})
-}
-
-func getMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"smsystem-backend/internal/database"
 	"smsystem-backend/internal/models"
@@ -165,7 +164,6 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Failed to hash password during reset: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process the new password"})
 		return
 	}

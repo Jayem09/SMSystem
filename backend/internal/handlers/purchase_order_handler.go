@@ -162,9 +162,9 @@ func (h *PurchaseOrderHandler) Receive(c *gin.Context) {
 		PONumber string `json:"po_number"`
 	}
 	if errJSON := c.ShouldBindJSON(&receiveInput); errJSON != nil {
-		fmt.Printf("Purchase Order Receive JSON bind error: %v\n", errJSON)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
 	}
-	fmt.Printf("Purchase Order Receive payload: po_number='%s'\n", receiveInput.PONumber)
 
 	branchID, hasBranchID := GetUintFromContext(c, "branchID")
 	if !hasBranchID {

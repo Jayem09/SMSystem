@@ -1,6 +1,7 @@
 import React, { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRoot, type Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const { mockApiGet, mockApiPost, mockShowToast } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -38,9 +39,13 @@ import Staff from './Staff';
 
 describe('Staff directory management', () => {
   let root: Root | null = null;
+  let queryClient: QueryClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     document.body.innerHTML = '<div id="root"></div>';
     mockApiGet.mockImplementation((url: string) => {
       if (url === '/api/users') return Promise.resolve({ data: { users: [] } });
@@ -73,7 +78,11 @@ describe('Staff directory management', () => {
 
     root = createRoot(container);
     await act(async () => {
-      root?.render(<Staff />);
+      root?.render(
+        <QueryClientProvider client={queryClient}>
+          <Staff />
+        </QueryClientProvider>,
+      );
       await Promise.resolve();
       await Promise.resolve();
     });
