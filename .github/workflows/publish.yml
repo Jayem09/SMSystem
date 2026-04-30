@@ -64,18 +64,35 @@ jobs:
       - name: create production env file
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
-      - name: build tauri app
+      - name: build tauri app (macOS aarch64)
+        if: matrix.arch == 'aarch64-apple-darwin'
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
         run: |
           cd frontend
-          if [ -n "${{ matrix.arch }}" ]; then
-            npm run tauri build -- --target ${{ matrix.arch }}
-          else
-            npm run tauri build
-          fi
+          npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: build tauri app (macOS x86_64)
+        if: matrix.arch == 'x86_64-apple-darwin'
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cd frontend
+          npm run tauri build -- --target x86_64-apple-darwin
+
+      - name: build tauri app (Windows)
+        if: matrix.arch == ''
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cd frontend
+          npm run tauri build
 
       - name: create release
         uses: softprops/action-gh-release@v2
