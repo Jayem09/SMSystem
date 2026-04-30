@@ -1,0 +1,104 @@
+name: "Publish Release"
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish-macos:
+    permissions:
+      contents: write
+    runs-on: macos-latest
+    env:
+      VITE_API_BASE_URL: "http://168.144.46.137:8080"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./frontend/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+
+      - name: install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: create production env file
+        run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
+
+      - name: build tauri app
+        uses: tauri-apps/tauri-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "SMSytem ${{ github.ref_name }}"
+          releaseBody: "Automated release\n\n**macOS Users**: If you see 'SMSytem is damaged and can't be opened':\n1. Right-click the app → Click 'Open' (only needed first time)\n   OR\n2. Run in terminal: sudo xattr -rd com.apple.quarantine /Applications/SMSytem.app\n\nThis happens because the app isn't signed with an Apple Developer certificate (costs $99/year). The app is safe to use."
+          releaseDraft: false
+          prerelease: false
+          projectPath: ./frontend
+
+  publish-windows:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    env:
+      VITE_API_BASE_URL: "http://168.144.46.137:8080"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./frontend/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+
+      - name: install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: create production env file
+        run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
+
+      - name: build tauri app
+        uses: tauri-apps/tauri-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "SMSytem ${{ github.ref_name }}"
+          releaseBody: "Automated release"
+          releaseDraft: false
+          prerelease: false
+          projectPath: ./frontend
