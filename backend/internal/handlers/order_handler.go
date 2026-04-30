@@ -36,6 +36,7 @@ type orderInput struct {
 	BranchID           *uint            `json:"branch_id"` // Explicit branch for super_admin orders
 	GuestName          string           `json:"guest_name"`
 	GuestPhone         string           `json:"guest_phone"`
+	PlateNumber        string           `json:"plate_number"`
 	ServiceAdvisorName string           `json:"service_advisor_name"`
 	MechanicName       string           `json:"mechanic_name"`
 	TintnerName        string           `json:"tintner_name"`
@@ -251,6 +252,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			CustomerID:         input.CustomerID,
 			GuestName:          input.GuestName,
 			GuestPhone:         input.GuestPhone,
+			PlateNumber:        input.PlateNumber,
 			UserID:             uID,
 			ServiceAdvisorName: input.ServiceAdvisorName,
 			MechanicName:       input.MechanicName,

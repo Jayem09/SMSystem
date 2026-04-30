@@ -187,6 +187,7 @@ export default function POS() {
 
   const moreRolesLabel = extraRoleSummary ? 'Edit Personnel' : '+ Personnel';
   const [guestPhone, setGuestPhone] = useState('');
+  const [plateNumber, setPlateNumber] = useState('');
   const [tin, setTin] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
   const [withholdingTaxRate, setWithholdingTaxRate] = useState('0');
@@ -623,6 +624,7 @@ export default function POS() {
         branch_id: Number(resolvedBranchId),
         guest_name: !customerId ? guestName : '',
         guest_phone: !customerId ? guestPhone : '',
+        plate_number: !customerId ? plateNumber : '',
         service_advisor_name: serviceAdvisorName,
         mechanic_name: mechanicName,
         tintner_name: tintnerName,
@@ -658,6 +660,7 @@ export default function POS() {
       setCustomerId('');
       setGuestName('');
       setGuestPhone('');
+      setPlateNumber('');
       setServiceAdvisorName('');
       setMechanicName('');
       setTin('');
@@ -905,9 +908,9 @@ export default function POS() {
         setIsRfidScanning(false);
         setRfidBuffer('');
         setRfidError(false);
-      }} title="Finalize Sale" maxWidth="max-w-4xl">
+      }} title="Finalize Sale" maxWidth="max-w-5xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column: Customer */}
+          {/* Column 1: Customer */}
           <div className="space-y-4">
             {/* RFID Card Section */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -1076,6 +1079,16 @@ export default function POS() {
                     onChange={(e) => setGuestPhone(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="09XX XXX XXXX"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Plate Number</label>
+                  <input
+                    type="text"
+                    value={plateNumber}
+                    onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="ABC 1234"
                   />
                 </div>
               </div>

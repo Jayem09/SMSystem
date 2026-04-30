@@ -20,6 +20,7 @@ type OfftakeReportRow struct {
 	InvoiceNo      string  `json:"invoice_no"`
 	InvoiceDate    string  `json:"invoice_date"`
 	CustomerName   string  `json:"customer_name"`
+	PlateNumber    string  `json:"plate_number"`
 	BranchName     string  `json:"branch_name"`
 	ServiceAdvisor string  `json:"service_advisor"`
 	Mechanic       string  `json:"mechanic"`
@@ -44,6 +45,7 @@ type offtakeRawRow struct {
 	CreatedAt      time.Time `gorm:"column:created_at"`
 	CustomerName   string    `gorm:"column:customer_name"`
 	BranchName     string    `gorm:"column:branch_name"`
+	PlateNumber    string    `gorm:"column:plate_number"`
 	ServiceAdvisor string    `gorm:"column:service_advisor"`
 	Mechanic       string    `gorm:"column:mechanic"`
 	Tintner        string    `gorm:"column:tintner"`
@@ -124,11 +126,17 @@ func buildOfftakeItemSummary(parts []offtakeItemPart) string {
 func buildOfftakeRows(raw []offtakeRawRow) []OfftakeReportRow {
 	rows := make([]OfftakeReportRow, 0, len(raw))
 	for _, row := range raw {
+		// Merge customer name with plate number
+		customerName := row.CustomerName
+		if row.PlateNumber != "" {
+			customerName = customerName + " - " + row.PlateNumber
+		}
+
 		rows = append(rows, OfftakeReportRow{
 			OrderID:        row.OrderID,
 			InvoiceNo:      buildOfftakeInvoiceLabel(row.ReceiptType, row.OrderID),
 			InvoiceDate:    row.CreatedAt.Format(offtakeDateLayout),
-			CustomerName:   row.CustomerName,
+			CustomerName:   customerName,
 			BranchName:     row.BranchName,
 			ServiceAdvisor: row.ServiceAdvisor,
 			Mechanic:       row.Mechanic,
@@ -158,6 +166,7 @@ func (h *ReportHandler) GetOfftake(c *gin.Context) {
 			orders.receipt_type,
 			orders.created_at,
 			COALESCE(customers.name, orders.guest_name, 'Walk-in') AS customer_name,
+			COALESCE(orders.plate_number, '') AS plate_number,
 			COALESCE(branches.name, '') AS branch_name,
 			COALESCE(NULLIF(TRIM(orders.service_advisor_name), ''), '') AS service_advisor,
 			COALESCE(NULLIF(TRIM(orders.mechanic_name), ''), '') AS mechanic,

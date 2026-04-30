@@ -43,7 +43,7 @@ export default function Modal({ open, onClose, title, children, maxWidth, wide }
   if (!open) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
@@ -56,7 +56,7 @@ export default function Modal({ open, onClose, title, children, maxWidth, wide }
       }}
       style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
     >
-      <div 
+      <div
         ref={modalRef}
         className={`bg-white border border-gray-200 rounded-xl shadow-xl w-full ${width} mx-4 max-h-[90vh] overflow-y-auto animate-fadeIn`}
         tabIndex={-1}
@@ -66,10 +66,10 @@ export default function Modal({ open, onClose, title, children, maxWidth, wide }
           <h2 id="modal-title" className="text-sm font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 w-7 h-7 flex items-center justify-center rounded-lg transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 w-112 h-4 flex items-center justify-center rounded-lg transition-colors cursor-pointer"
             aria-label="Close modal"
           >
-            x
+            close
           </button>
         </div>
         <div className="p-4">

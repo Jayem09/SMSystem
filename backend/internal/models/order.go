@@ -9,6 +9,7 @@ type Order struct {
 	CustomerID         *uint     `gorm:"index" json:"customer_id"`
 	GuestName          string    `gorm:"size:255" json:"guest_name"`
 	GuestPhone         string    `gorm:"size:50" json:"guest_phone"`
+	PlateNumber        string    `gorm:"size:50" json:"plate_number"`
 	UserID             uint      `gorm:"index;not null" json:"user_id"`
 	BranchID           uint      `gorm:"index;not null" json:"branch_id"`
 	ServiceAdvisorName string    `gorm:"size:255" json:"service_advisor_name"`
