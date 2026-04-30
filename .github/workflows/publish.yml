@@ -65,15 +65,38 @@ jobs:
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
       - name: build tauri app
-        uses: tauri-apps/tauri-action@v0
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cd frontend
+          if [ -n "${{ matrix.arch }}" ]; then
+            npm run tauri build -- --target ${{ matrix.arch }}
+          else
+            npm run tauri build
+          fi
+
+      - name: create release
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "SMSytem ${{ github.ref_name }}"
-          releaseBody: "Automated release\n\n**macOS Users**: If you see 'SMSytem is damaged and can't be opened':\n1. Right-click the app → Click 'Open' (only needed first time)\n   OR\n2. Run in terminal: sudo xattr -rd com.apple.quarantine /Applications/SMSytem.app\n\nThis happens because the app isn't signed with an Apple Developer certificate (costs $99/year). The app is safe to use."
-          releaseDraft: false
+          tag_name: ${{ github.ref_name }}
+          name: "SMSytem ${{ github.ref_name }}"
+          body: |
+            Automated release
+
+            **macOS Users**: If you see 'SMSytem is damaged and can't be opened':
+            1. Right-click the app → Click 'Open' (only needed first time)
+               OR
+            2. Run in terminal: sudo xattr -rd com.apple.quarantine /Applications/SMSytem.app
+
+            This happens because the app isn't signed with an Apple Developer certificate (costs $99/year). The app is safe to use.
+          draft: false
           prerelease: false
-          projectPath: ./frontend
+          files: |
+            ./frontend/src-tauri/target/**/release/bundle/dmg/*.dmg
+            ./frontend/src-tauri/target/**/release/bundle/nsis/*.exe
+            ./frontend/src-tauri/target/**/release/bundle/app/*.tar.gz
+            ./frontend/src-tauri/target/**/release/bundle/app/*.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
