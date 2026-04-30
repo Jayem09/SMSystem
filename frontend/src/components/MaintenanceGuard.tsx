@@ -34,54 +34,10 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }, []);
 
     const startUpdate = async () => {
-        try {
-            setIsUpdating(true);
-            setUpdateProgress(0);
-            
-             const { check } = await import('@tauri-apps/plugin-updater');
-             const { relaunch } = await import('@tauri-apps/plugin-process');
-             
-             const update = await check();
-
-             if (update) {
-                 let downloaded = 0;
-                 let contentLength = 0;
-                 
-                 await update.downloadAndInstall((event) => {
-                     if (event.event === 'Started') {
-                         contentLength = event.data?.contentLength || 0;
-                     } else if (event.event === 'Progress') {
-                         downloaded += event.data?.chunkLength || 0;
-                         if (contentLength > 0) {
-                             setUpdateProgress(Math.round((downloaded / contentLength) * 100));
-                         }
-                     } else if (event.event === 'Finished') {
-                         setUpdateProgress(100);
-                     }
-                 });
-                 
-                 await new Promise(resolve => setTimeout(resolve, 3000));
-                 
-                 try {
-                     await relaunch();
-                 } catch (relaunchErr) {
-                     console.error("Relaunch failed, fallback to reload:", relaunchErr);
-                     window.location.reload();
-                 }
-             } else {
-                 try {
-                     await relaunch();
-                 } catch (relaunchErr) {
-                     console.error("Relaunch failed:", relaunchErr);
-                     window.location.reload();
-                 }
-             }
-        } catch (e) {
-            console.error("Update failed:", e);
-            setTimeout(() => window.location.reload(), 2000);
-        } finally {
-            setIsUpdating(false);
-        }
+        // Updater is disabled (no Apple signing = $99/year)
+        // Just reload the page - user needs to manually download from GitHub
+        window.open('https://github.com/Jayem09/SMSystem/releases/latest', '_blank');
+        setTimeout(() => window.location.reload(), 2000);
     };
 
     if (loading) return (
@@ -135,7 +91,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                                     }`}
                             >
                                 {isUpdating
-                                    ? (updateProgress !== null ? `DOWNLOADING ${updateProgress}%` : 'PREPARING UPDATE...')
+                                    ? 'OPENING DOWNLOAD PAGE...'
                                     : 'DOWNLOAD UPDATE'}
                             </button>
                         )}
