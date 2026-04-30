@@ -68,8 +68,6 @@ jobs:
         uses: tauri-apps/tauri-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "SMSytem ${{ github.ref_name }}"
@@ -77,4 +75,3 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: ./frontend
-          args: ${{ matrix.arch != '' && format('--target {0}', matrix.arch) || '' }}
