@@ -61,6 +61,9 @@ jobs:
       - name: install frontend dependencies
         run: cd frontend && npm ci
 
+      - name: install tauri CLI
+        run: cd frontend && npm install @tauri-apps/cli
+
       - name: create production env file
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
