@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "5.0.3",
+  "version": "5.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,8 +11,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:build": "tauri build",
-    "tauri build": "tauri build"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
