@@ -11,7 +11,7 @@ import {
   type ExportableOrder,
   type OfftakeReportRow,
   type OrdersExportFilters,
-} from './reportExports';
+} from '../../utils/reportExports';
 
 describe('reportExports', () => {
   it('builds Daily Summary overview rows with collected totals', () => {

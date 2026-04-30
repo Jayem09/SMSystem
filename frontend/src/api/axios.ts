@@ -14,6 +14,15 @@ interface ApiResponse {
   headers: Record<string, string>;
 }
 
+type ApiError = Error & {
+  status: number;
+  response: {
+    data: unknown;
+    status: number;
+    statusText: string;
+  };
+};
+
 type ApiConfig = {
   timeout?: number;
   signal?: AbortSignal;
@@ -40,6 +49,22 @@ class TauriApi {
 
   private getToken(): string | null {
     return localStorage.getItem('token');
+  }
+
+  private buildHttpError(status: number, statusText: string, data: unknown): ApiError {
+    const message =
+      typeof data === 'object' && data !== null && 'error' in data && typeof (data as { error?: unknown }).error === 'string'
+        ? (data as { error: string }).error
+        : statusText || `HTTP ${status}`;
+
+    const error = new Error(message) as ApiError;
+    error.status = status;
+    error.response = {
+      data,
+      status,
+      statusText,
+    };
+    return error;
   }
 
   private async fetchRequest(
@@ -73,6 +98,10 @@ class TauriApi {
       responseData = await response.json();
     } catch {
       responseData = null;
+    }
+
+    if (response.status >= 400) {
+      throw this.buildHttpError(response.status, response.statusText, responseData);
     }
 
     return {
@@ -114,6 +143,10 @@ class TauriApi {
           result = await invoke<TauriResult>('api_post', { url: fullUrl, body, token });
         }
 
+        if (result.status >= 400) {
+          throw this.buildHttpError(result.status, result.status_text, result.data);
+        }
+
         return {
           data: result.data,
           status: result.status,
@@ -122,6 +155,9 @@ class TauriApi {
         };
       }
     } catch (err) {
+      if (err && typeof err === 'object' && 'status' in err) {
+        throw err;
+      }
       console.warn('[API] Tauri invoke not available, using fetch:', err);
     }
 

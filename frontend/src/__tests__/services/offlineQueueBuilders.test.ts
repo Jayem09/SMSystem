@@ -3,7 +3,7 @@ import {
   buildExpenseCreateQueueItem,
   buildPurchaseOrderCreateQueueItem,
   buildTransferCreateQueueItem,
-} from './offlineQueueBuilders';
+} from '../../services/offlineQueueBuilders';
 
 describe('buildTransferCreateQueueItem', () => {
   it('creates a transfer queue item with normalized transfer payload', () => {

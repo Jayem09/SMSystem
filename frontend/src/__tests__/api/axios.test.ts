@@ -25,7 +25,7 @@ describe('axios GET params in Tauri mode', () => {
   });
 
   it('includes query params when calling get with a params config', async () => {
-    const { get } = await import('./axios');
+    const { get } = await import('../../api/axios');
 
     await get('/api/dashboard', { params: { days: '30', branch_id: '2' } });
 
@@ -49,7 +49,7 @@ describe('axios GET params in Tauri mode', () => {
       json: vi.fn().mockResolvedValue({ ok: true }),
     }));
 
-    const { get } = await import('./axios');
+    const { get } = await import('../../api/axios');
 
     await get('/api/health');
 
@@ -58,5 +58,44 @@ describe('axios GET params in Tauri mode', () => {
       'http://168.144.46.137:8080/api/health',
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+
+  it('throws when Tauri POST returns a non-2xx status', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { error: 'walk-in failed' },
+      status: 500,
+      status_text: 'Internal Server Error',
+    });
+
+    const { post } = await import('../../api/axios');
+
+    await expect(post('/api/orders', { guest_name: 'Walk-in' })).rejects.toMatchObject({
+      status: 500,
+      response: {
+        data: { error: 'walk-in failed' },
+      },
+    });
+  });
+
+  it('throws when browser fetch returns a non-2xx status', async () => {
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: vi.fn().mockResolvedValue({ error: 'walk-in failed' }),
+    }));
+
+    const { post } = await import('../../api/axios');
+
+    await expect(post('/api/orders', { guest_name: 'Walk-in' })).rejects.toMatchObject({
+      status: 500,
+      response: {
+        data: { error: 'walk-in failed' },
+      },
+    });
   });
 });

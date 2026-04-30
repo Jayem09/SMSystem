@@ -5,7 +5,7 @@ import {
   dedupePosCustomers,
   mapCachedProductsToPosProducts,
   normalizePosCustomerRecord,
-} from './posDataNormalization';
+} from '../../services/posDataNormalization';
 
 describe('normalizePosCustomerRecord', () => {
   it('normalizes snake_case customer fields into cached camelCase fields', () => {

@@ -12,7 +12,7 @@ describe('isTauriRuntime', () => {
       value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
     });
 
-    const { isTauriRuntime } = await import('./runtime');
+    const { isTauriRuntime } = await import('../../utils/runtime');
 
     expect(isTauriRuntime()).toBe(false);
   });
@@ -23,7 +23,7 @@ describe('isTauriRuntime', () => {
       value: {},
     });
 
-    const { isTauriRuntime } = await import('./runtime');
+    const { isTauriRuntime } = await import('../../utils/runtime');
 
     expect(isTauriRuntime()).toBe(true);
   });

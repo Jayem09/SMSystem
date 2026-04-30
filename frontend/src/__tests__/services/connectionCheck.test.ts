@@ -26,7 +26,7 @@ describe('checkServerConnection', () => {
   });
 
   it('uses fetch only in browser mode without Tauri globals', async () => {
-    const { checkServerConnection } = await import('./connectionCheck');
+    const { checkServerConnection } = await import('../../services/connectionCheck');
 
     const connected = await checkServerConnection();
 

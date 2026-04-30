@@ -143,7 +143,7 @@ export default function Transactions() {
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder="Search customer, item, service advisor, or mechanic..."
+              placeholder="Search customer, plate no., item, service advisor, or mechanic..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="text-sm text-gray-700 outline-none w-full"
@@ -174,7 +174,7 @@ export default function Transactions() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Invoice #</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Type</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Branch</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer/Plate No.</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Service Advisor</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Mechanic</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Item</th>

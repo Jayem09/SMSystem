@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { invalidateDashboardQueries } from './dashboardRefresh';
+import { invalidateDashboardQueries } from '../../services/dashboardRefresh';
 
 describe('invalidateDashboardQueries', () => {
   it('invalidates dashboard stats queries without touching unrelated queries', async () => {

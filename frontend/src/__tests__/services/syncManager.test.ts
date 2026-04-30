@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockLocalStorage, installMockLocalStorage } from '../test/mockLocalStorage';
+import { createMockLocalStorage, installMockLocalStorage } from '../../test/mockLocalStorage';
 
 const { mockPost, mockPut, mockDelete, mockSetLastSync } = vi.hoisted(() => ({
   mockPost: vi.fn(),
@@ -11,27 +11,27 @@ const { mockPost, mockPut, mockDelete, mockSetLastSync } = vi.hoisted(() => ({
 const mockLocalStorage = createMockLocalStorage();
 installMockLocalStorage(mockLocalStorage);
 
-vi.mock('../api/axios', () => ({
+vi.mock('../../api/axios', () => ({
   post: mockPost,
   put: mockPut,
   delete: mockDelete,
 }));
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   setOfflineMode: vi.fn(),
 }));
 
-vi.mock('./connectionCheck', () => ({
+vi.mock('../../services/connectionCheck', () => ({
   checkServerConnection: vi.fn(),
 }));
 
-vi.mock('../lib/queryClient', () => ({
+vi.mock('../../lib/queryClient', () => ({
   queryClient: {
     invalidateQueries: vi.fn(),
   },
 }));
 
-vi.mock('./offlineStorage', () => ({
+vi.mock('../../services/offlineStorage', () => ({
   default: {
     setLastSync: mockSetLastSync,
     markCustomerSynced: vi.fn(),
@@ -42,8 +42,8 @@ vi.mock('./offlineStorage', () => ({
   },
 }));
 
-import { createSyncQueueItem, enqueueSyncItem, getSyncQueue, saveSyncQueue } from './syncQueue';
-import { syncOrders } from './syncManager';
+import { createSyncQueueItem, enqueueSyncItem, getSyncQueue, saveSyncQueue } from '../../services/syncQueue';
+import { syncOrders } from '../../services/syncManager';
 
 describe('syncOrders', () => {
   beforeEach(() => {

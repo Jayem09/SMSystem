@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exportOfftakeToExcel } from '../utils/reportExports';
+import { exportOfftakeToExcel } from '../../utils/reportExports';
 
 describe('OfftakeReport', () => {
   beforeEach(() => {

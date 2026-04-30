@@ -16,23 +16,27 @@ const {
   mockQueryClient: { invalidateQueries: vi.fn() },
 }));
 
-vi.mock('../api/axios', () => ({
+vi.mock('../../api/axios', () => ({
   default: {
     get: mockApiGet,
     post: vi.fn(),
   },
 }));
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => mockQueryClient,
-  useQuery: mockUseQuery,
-}));
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
+  return {
+    ...actual,
+    useQueryClient: () => mockQueryClient,
+    useQuery: mockUseQuery,
+  };
+});
 
-vi.mock('../hooks/useAuth', () => ({
+vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 1, role: 'admin', branch_id: 4 } }),
 }));
 
-vi.mock('../hooks/usePOS', () => ({
+vi.mock('../../hooks/usePOS', () => ({
   usePOS: () => ({
     state: {
       products: [],
@@ -66,7 +70,7 @@ vi.mock('../hooks/usePOS', () => ({
   }),
 }));
 
-vi.mock('../hooks/useQueries', () => ({
+vi.mock('../../hooks/useQueries', () => ({
   usePOSData: () => ({
     data: null,
     isLoading: false,
@@ -75,41 +79,41 @@ vi.mock('../hooks/useQueries', () => ({
   }),
 }));
 
-vi.mock('../context/ToastContext', () => ({
+vi.mock('../../context/ToastContext', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   getIsOfflineMode: () => false,
 }));
 
-vi.mock('../components/Modal', () => ({
+vi.mock('../../components/Modal', () => ({
   default: ({ open, title, children, maxWidth }: { open: boolean; title: string; children: React.ReactNode; maxWidth?: string }) =>
     open ? <div><h2>{title}</h2>{children}</div> : null,
 }));
 
-vi.mock('../components/Receipt', () => ({ printReceipt: vi.fn() }));
-vi.mock('../components/DeliveryReceipt', () => ({ printDeliveryReceipt: vi.fn() }));
-vi.mock('../services/offlineStorage', () => ({
+vi.mock('../../components/Receipt', () => ({ printReceipt: vi.fn() }));
+vi.mock('../../components/DeliveryReceipt', () => ({ printDeliveryReceipt: vi.fn() }));
+vi.mock('../../services/offlineStorage', () => ({
   default: {
     getCustomers: vi.fn(() => []),
     saveOrder: vi.fn(),
   },
 }));
-vi.mock('../services/syncQueue', () => ({
+vi.mock('../../services/syncQueue', () => ({
   createSyncQueueItem: vi.fn(),
   enqueueSyncItem: vi.fn(),
   findLatestEntitySyncItem: vi.fn(() => null),
 }));
-vi.mock('../services/offlinePosStock', () => ({
+vi.mock('../../services/offlinePosStock', () => ({
   mergeOfflineBranchProductsIntoPosData: vi.fn((data) => data),
   persistOfflineBranchStockDeduction: vi.fn(),
 }));
-vi.mock('../services/dashboardRefresh', () => ({
+vi.mock('../../services/dashboardRefresh', () => ({
   invalidateDashboardQueries: vi.fn(),
 }));
 
-vi.mock('../utils/staffDirectory', () => ({
+vi.mock('../../utils/staffDirectory', () => ({
   filterStaffDirectoryByType: vi.fn((staff, type) => {
     const staffByType: Record<string, { name: string; type: string }> = {
       service_advisor: [{ name: 'Mike', type: 'service_advisor' }],
@@ -122,7 +126,7 @@ vi.mock('../utils/staffDirectory', () => ({
   normalizeStaffDirectorySettings: vi.fn((settings) => settings?.staff_directory || []),
 }));
 
-import POS from './POS';
+import POS from '../../pages/POS';
 
 describe('POS checkout modal', () => {
   let root: Root | null = null;

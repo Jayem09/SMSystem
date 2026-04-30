@@ -6,13 +6,13 @@ const { mockApiGet } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
 }));
 
-vi.mock('../api/axios', () => ({
+vi.mock('../../api/axios', () => ({
   default: {
     get: mockApiGet,
   },
 }));
 
-import Transactions from './Transactions';
+import Transactions from '../../pages/Transactions';
 
 describe('Transactions', () => {
   let root: Root | null = null;

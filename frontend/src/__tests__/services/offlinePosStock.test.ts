@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import offlineStorage, { type LocalProduct } from './offlineStorage';
+import offlineStorage, { type LocalProduct } from '../../services/offlineStorage';
 import {
   applyOfflineStockDeduction,
   mergeOfflineBranchProductsIntoPosData,
   persistOfflineBranchStockDeduction,
-} from './offlinePosStock';
-import { createMockLocalStorage, installMockLocalStorage } from '../test/mockLocalStorage';
+} from '../../services/offlinePosStock';
+import { createMockLocalStorage, installMockLocalStorage } from '../../test/mockLocalStorage';
 
 const mockLocalStorage = createMockLocalStorage();
 installMockLocalStorage(mockLocalStorage);

@@ -251,7 +251,7 @@ export function buildOfftakeExportSummaryRows(rows: OfftakeReportRow[], filters:
     'Exported At': new Date().toLocaleString(),
     'Date Range': `${filters.startDate} to ${filters.endDate}`,
     'Branch': filters.branchLabel || 'All Branches',
-    'Customer': filters.customer || 'All',
+    'Customer/Plate No.': filters.customer || 'All',
     'Invoice #': filters.invoiceNo || 'All',
     'Item': filters.itemName || 'All',
     'Payment Status': filters.paymentStatus || 'All',
@@ -267,7 +267,7 @@ export function buildOfftakeExportRows(rows: OfftakeReportRow[]) {
   return rows.map((row) => ({
     'Invoice #': row.invoice_no,
     'Date': row.invoice_date,
-    'Customer': row.customer_name,
+    'Customer/Plate No.': row.customer_name,
     'Branch': row.branch_name,
     'Service Advisor': row.service_advisor || '',
     'Personnel': row.mechanic || '',

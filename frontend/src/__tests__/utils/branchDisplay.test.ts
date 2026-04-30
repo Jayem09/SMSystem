@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { User } from '../context/AuthContextObject';
-import { getBranchDisplayName } from './branchDisplay';
+import type { User } from '../../context/AuthContextObject';
+import { getBranchDisplayName } from '../../utils/branchDisplay';
 
 describe('getBranchDisplayName', () => {
   it('returns the real branch name when it exists', () => {

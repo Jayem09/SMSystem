@@ -25,11 +25,11 @@ describe('eventService', () => {
 
     const mockCheckServerConnection = vi.fn().mockResolvedValue(true);
 
-    vi.doMock('./connectionCheck', () => ({
+    vi.doMock('../../services/connectionCheck', () => ({
       checkServerConnection: mockCheckServerConnection,
     }));
 
-    const { disconnect, onStatusChange, startEventService } = await import('./eventService');
+    const { disconnect, onStatusChange, startEventService } = await import('../../services/eventService');
 
     const statuses: string[] = [];
     const unsubscribe = onStatusChange((status) => statuses.push(status));

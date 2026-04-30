@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSyncQueueItem } from './syncQueue';
+import { createSyncQueueItem } from '../../services/syncQueue';
 
 describe('createSyncQueueItem', () => {
   it('creates a pending queue item with default metadata', () => {

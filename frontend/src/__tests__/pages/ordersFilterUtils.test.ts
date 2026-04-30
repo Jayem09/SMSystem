@@ -9,7 +9,7 @@ import {
   matchesPaymentStatusFilter,
   sortOrders,
   type FilterableOrder,
-} from './ordersFilterUtils';
+} from '../../pages/ordersFilterUtils';
 
 function buildOrder(overrides: Partial<FilterableOrder> = {}): FilterableOrder {
   return {

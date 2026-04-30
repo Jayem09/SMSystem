@@ -8,13 +8,13 @@ import (
 func TestBuildTransactionSearchFilterIncludesMechanic(t *testing.T) {
 	clause, args := buildTransactionSearchFilter("  Jomar  ")
 
-	expectedClause := "COALESCE(customers.name, orders.guest_name, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ? OR orders.mechanic_name LIKE ?"
+	expectedClause := "COALESCE(customers.name, orders.guest_name, '') LIKE ? OR COALESCE(orders.plate_number, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ? OR orders.mechanic_name LIKE ?"
 	if clause != expectedClause {
 		t.Fatalf("expected clause %q, got %q", expectedClause, clause)
 	}
 
-	if len(args) != 4 {
-		t.Fatalf("expected 4 search args, got %d", len(args))
+	if len(args) != 5 {
+		t.Fatalf("expected 5 search args, got %d", len(args))
 	}
 
 	for _, arg := range args {

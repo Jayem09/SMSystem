@@ -44,8 +44,8 @@ func resolveTransactionDate(dateStr string) (time.Time, error) {
 func buildTransactionSearchFilter(search string) (string, []interface{}) {
 	search = strings.TrimSpace(search)
 	like := "%" + search + "%"
-	clause := "COALESCE(customers.name, orders.guest_name, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ? OR orders.mechanic_name LIKE ?"
-	return clause, []interface{}{like, like, like, like}
+	clause := "COALESCE(customers.name, orders.guest_name, '') LIKE ? OR COALESCE(orders.plate_number, '') LIKE ? OR products.name LIKE ? OR orders.service_advisor_name LIKE ? OR orders.mechanic_name LIKE ?"
+	return clause, []interface{}{like, like, like, like, like}
 }
 
 type transactionRawRow struct {
@@ -54,6 +54,7 @@ type transactionRawRow struct {
 	ReceiptType        string    `gorm:"column:receipt_type"`
 	BranchName         string    `gorm:"column:branch_name"`
 	CustomerName       string    `gorm:"column:customer_name"`
+	PlateNumber        string    `gorm:"column:plate_number"`
 	ServiceAdvisorName string    `gorm:"column:service_advisor_name"`
 	MechanicName       string    `gorm:"column:mechanic_name"`
 	ItemName           string    `gorm:"column:item_name"`
@@ -69,12 +70,17 @@ type transactionRawRow struct {
 func buildTransactionRows(rows []transactionRawRow) []TransactionRow {
 	result := make([]TransactionRow, 0, len(rows))
 	for _, r := range rows {
+		customerName := r.CustomerName
+		if strings.TrimSpace(r.PlateNumber) != "" {
+			customerName = customerName + " - " + strings.TrimSpace(r.PlateNumber)
+		}
+
 		result = append(result, TransactionRow{
 			Date:               r.CreatedAt.Format("2006-01-02"),
 			OrderID:            r.ID,
 			ReceiptType:        r.ReceiptType,
 			BranchName:         r.BranchName,
-			CustomerName:       r.CustomerName,
+			CustomerName:       customerName,
 			ServiceAdvisorName: r.ServiceAdvisorName,
 			MechanicName:       r.MechanicName,
 			ItemName:           r.ItemName,
@@ -121,6 +127,7 @@ func (h *TransactionHandler) List(c *gin.Context) {
 			orders.receipt_type,
 			branches.name        AS branch_name,
 			COALESCE(customers.name, orders.guest_name, 'Walk-in') AS customer_name,
+			COALESCE(orders.plate_number, '')                      AS plate_number,
 			COALESCE(orders.service_advisor_name, '')              AS service_advisor_name,
 			COALESCE(orders.mechanic_name, '')                      AS mechanic_name,
 			products.name                                          AS item_name,

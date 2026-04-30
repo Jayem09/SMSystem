@@ -148,7 +148,7 @@ export default function POS() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { state, dispatch, addToCart, removeFromCart, updateQuantity, clearCart, setSearch, setCategory, subtotal: posSubtotal, filteredProducts, lastAddBlocked } = usePOS();
-  
+
   // Fetch settings for staff directory dropdowns
   const { data: settingsData } = useQuery({
     queryKey: ['settings', user?.id],
@@ -159,13 +159,13 @@ export default function POS() {
     staleTime: 5 * 60 * 1000,
     enabled: !!user,
   });
-  
+
   const staffDirectory = settingsData ? normalizeStaffDirectorySettings(settingsData) : [];
   const serviceAdvisors = filterStaffDirectoryByType(staffDirectory, 'service_advisor');
   const mechanics = filterStaffDirectoryByType(staffDirectory, 'mechanic');
   const tintners = filterStaffDirectoryByType(staffDirectory, 'tintner');
   const carwashers = filterStaffDirectoryByType(staffDirectory, 'carwasher');
-  
+
   const { products, categories, customers, cart, search, selectedCategory, loading, error } = state;
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -226,7 +226,7 @@ export default function POS() {
     if (posData) {
       dispatch({ type: 'SET_PRODUCTS', payload: posData.products as POSProduct[] });
       dispatch({ type: 'SET_CATEGORIES', payload: posData.categories as { id: number; name: string }[] });
-      
+
       // Include loyalty_points in customer data
       const customersWithPoints = (posData.customers as Customer[]).map((c) => ({
         ...c,
@@ -283,7 +283,7 @@ export default function POS() {
     if (getIsOfflineMode()) {
       const customers = offlineStorage.getCustomers();
       const customer = customers.find((c) => c.rfidCardId === uid || c.rfid_card_id === uid);
-      
+
       if (customer) {
         setRfidCustomer(customer);
         setCustomerId(customer.id?.toString() || '');
@@ -300,7 +300,7 @@ export default function POS() {
       }
       return;
     }
-    
+
     // ONLINE MODE: API call
     try {
       console.log('RFID scanning:', uid);
@@ -384,7 +384,7 @@ export default function POS() {
       showToast('Invalid RFID card. Please scan a registered card or select customer manually.', 'error');
       return;
     }
-    
+
     // OFFLINE CHECKOUT: Save order locally
     if (getIsOfflineMode()) {
       const offlineCreatedAt = new Date().toISOString();
@@ -400,7 +400,7 @@ export default function POS() {
           customerPhone = customer.phone || '';
         }
       }
-      
+
       const offlineOrder = {
         customerId: customerId ? parseInt(customerId) : null,
         branchId: Number(resolvedBranchId),
@@ -434,7 +434,7 @@ export default function POS() {
         createdAt: offlineCreatedAt,
         synced: false
       };
-      
+
       offlineStorage.saveOrder(offlineOrder);
 
       const customerDependency = customerId
@@ -473,7 +473,7 @@ export default function POS() {
       });
 
       enqueueSyncItem(orderQueueItem);
-      
+
       // Deduct stock from cached products so POS reflects correct quantities
       if (status === 'completed') {
         const updatedProducts = persistOfflineBranchStockDeduction(
@@ -493,7 +493,7 @@ export default function POS() {
           dispatch({ type: 'SET_PRODUCTS', payload: updatedProducts as POSProduct[] });
         }
       }
-      
+
       // Also set lastOrder so print works
       setLastOrder({
         id: Date.now(),
@@ -530,7 +530,7 @@ export default function POS() {
           const newPoints = currentPoints - (selectedReward.points_required || 0);
           customers[customerIdx].loyaltyPoints = Math.max(0, newPoints);
           offlineStorage.saveCustomers(customers);
-          
+
           // Save pending points adjustment for sync
           const loyaltyTimestamp = new Date().toISOString();
 
@@ -555,7 +555,7 @@ export default function POS() {
               timestamp: loyaltyTimestamp,
             },
           }));
-          
+
           console.log('[POS] Deducted', selectedReward.points_required, 'points from customer', customerId);
         }
       } else if (status === 'completed' && customerId) {
@@ -590,14 +590,14 @@ export default function POS() {
       // Force POS data to refresh so UI reflects stock and point changes immediately
       // queryKey must match exactly what usePOSData uses: ['pos', 'data']
       queryClient.invalidateQueries({ queryKey: ['pos', 'data'] });
-      
+
       showToast('Order saved offline. Will sync when connection restored.', 'success');
       clearCart();
       setCheckoutModalOpen(false);
       setSuccessModalOpen(true);
       return;
     }
-    
+
     try {
       if (paymentMethod === 'card' && status === 'completed') {
         setIsProcessingTerminal(true);
@@ -660,7 +660,6 @@ export default function POS() {
       setCustomerId('');
       setGuestName('');
       setGuestPhone('');
-      setPlateNumber('');
       setServiceAdvisorName('');
       setMechanicName('');
       setTin('');
@@ -908,9 +907,9 @@ export default function POS() {
         setIsRfidScanning(false);
         setRfidBuffer('');
         setRfidError(false);
-      }} title="Finalize Sale" maxWidth="max-w-5xl">
+      }} title="Finalize Sale" maxWidth="max-w-4xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Column 1: Customer */}
+          {/* Left Column: Customer */}
           <div className="space-y-4">
             {/* RFID Card Section */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -1081,16 +1080,6 @@ export default function POS() {
                     placeholder="09XX XXX XXXX"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Plate Number</label>
-                  <input
-                    type="text"
-                    value={plateNumber}
-                    onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="ABC 1234"
-                  />
-                </div>
               </div>
             )}
 
@@ -1239,19 +1228,19 @@ export default function POS() {
 
             {/* Service Advisor - Always visible */}
             {(serviceAdvisors.length > 0 || true) && (
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Service Advisor</label>
-              <select
-                value={serviceAdvisorName}
-                onChange={(e) => setServiceAdvisorName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">— None —</option>
-                {serviceAdvisors.map((entry) => (
-                  <option key={entry.name} value={entry.name}>{entry.name}</option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Service Advisor</label>
+                <select
+                  value={serviceAdvisorName}
+                  onChange={(e) => setServiceAdvisorName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">— None —</option>
+                  {serviceAdvisors.map((entry) => (
+                    <option key={entry.name} value={entry.name}>{entry.name}</option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {/* Extra Roles - Collapsible */}

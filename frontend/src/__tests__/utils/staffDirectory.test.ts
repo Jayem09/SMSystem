@@ -6,7 +6,7 @@ import {
   normalizeStaffDirectorySettings,
   removeStaffDirectoryEntry,
   type StaffDirectoryEntry,
-} from './staffDirectory';
+} from '../../utils/staffDirectory';
 
 describe('normalizeStaffDirectorySettings', () => {
   it('uses staff_directory entries when present', () => {

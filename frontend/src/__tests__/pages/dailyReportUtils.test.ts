@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCurrency, getCollectedTotal, getPaymentValue } from './dailyReportUtils';
+import { formatCurrency, getCollectedTotal, getPaymentValue } from '../../pages/dailyReportUtils';
 
 describe('dailyReportUtils', () => {
   it('returns matching payment totals by method', () => {

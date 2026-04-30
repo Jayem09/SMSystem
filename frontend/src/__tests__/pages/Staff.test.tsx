@@ -9,7 +9,7 @@ const { mockApiGet, mockApiPost, mockShowToast } = vi.hoisted(() => ({
   mockShowToast: vi.fn(),
 }));
 
-vi.mock('../api/axios', () => ({
+vi.mock('../../api/axios', () => ({
   default: {
     get: mockApiGet,
     post: mockApiPost,
@@ -18,24 +18,24 @@ vi.mock('../api/axios', () => ({
   },
 }));
 
-vi.mock('../hooks/useAuth', () => ({
+vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 1, role: 'super_admin' } }),
 }));
 
-vi.mock('../context/ToastContext', () => ({
+vi.mock('../../context/ToastContext', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
-vi.mock('../components/DataTable', () => ({
+vi.mock('../../components/DataTable', () => ({
   default: () => <div data-testid="account-table" />,
 }));
 
-vi.mock('../components/Modal', () => ({
+vi.mock('../../components/Modal', () => ({
   default: ({ open, title, children }: { open: boolean; title: string; children: React.ReactNode }) =>
     open ? <div><h2>{title}</h2>{children}</div> : null,
 }));
 
-import Staff from './Staff';
+import Staff from '../../pages/Staff';
 
 describe('Staff directory management', () => {
   let root: Root | null = null;

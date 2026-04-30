@@ -380,7 +380,7 @@ export default function OfftakeReport() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Invoice #</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Date</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Customer/Plate No.</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Branch</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Salesperson</th>
                 {showMechanicColumn && <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">Personnel</th>}

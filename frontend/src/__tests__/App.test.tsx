@@ -16,75 +16,75 @@ const {
   mockStartReconnectChecker: vi.fn(),
 }));
 
-vi.mock('./services/connectionCheck', () => ({
+vi.mock('../services/connectionCheck', () => ({
   waitForConnection: mockWaitForConnection,
   checkServerConnection: mockCheckServerConnection,
 }));
 
-vi.mock('./services/syncManager', () => ({
+vi.mock('../services/syncManager', () => ({
   setUserOfflineMode: mockSetUserOfflineMode,
   startReconnectChecker: mockStartReconnectChecker,
 }));
 
-vi.mock('./context/AuthContext', () => ({
+vi.mock('../context/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   setOfflineMode: mockSetOfflineMode,
   getIsOfflineMode: () => false,
 }));
 
-vi.mock('./context/ToastContext', () => ({
+vi.mock('../context/ToastContext', () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./components/Toast', () => ({
+vi.mock('../components/Toast', () => ({
   default: () => null,
 }));
 
-vi.mock('./components/ProtectedRoute', () => ({
+vi.mock('../components/ProtectedRoute', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./components/Layout', () => ({
+vi.mock('../components/Layout', () => ({
   default: () => <div>Online App</div>,
 }));
 
-vi.mock('./components/ErrorBoundary', () => ({
+vi.mock('../components/ErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./components/MaintenanceGuard', () => ({
+vi.mock('../components/MaintenanceGuard', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./components/LoadingScreen', () => ({
+vi.mock('../components/LoadingScreen', () => ({
   default: () => <div>Loading</div>,
 }));
 
-vi.mock('./pages/Login', () => ({ default: () => <div>Login</div> }));
-vi.mock('./pages/Register', () => ({ default: () => <div>Register</div> }));
-vi.mock('./pages/Dashboard', () => ({ default: () => <div>Dashboard</div> }));
-vi.mock('./pages/Products', () => ({ default: () => <div>Products</div> }));
-vi.mock('./pages/Categories', () => ({ default: () => <div>Categories</div> }));
-vi.mock('./pages/Brands', () => ({ default: () => <div>Brands</div> }));
-vi.mock('./pages/Customers', () => ({ default: () => <div>Customers</div> }));
-vi.mock('./pages/CRM', () => ({ default: () => <div>CRM</div> }));
-vi.mock('./pages/Orders', () => ({ default: () => <div>Orders</div> }));
-vi.mock('./pages/Expenses', () => ({ default: () => <div>Expenses</div> }));
-vi.mock('./pages/ActivityLogs', () => ({ default: () => <div>Activity Logs</div> }));
-vi.mock('./pages/POS', () => ({ default: () => <div>POS</div> }));
-vi.mock('./pages/Suppliers', () => ({ default: () => <div>Suppliers</div> }));
-vi.mock('./pages/PurchaseOrders', () => ({ default: () => <div>Purchase Orders</div> }));
-vi.mock('./pages/Staff', () => ({ default: () => <div>Staff</div> }));
-vi.mock('./pages/Inventory', () => ({ default: () => <div>Inventory</div> }));
-vi.mock('./pages/Settings', () => ({ default: () => <div>Settings</div> }));
-vi.mock('./pages/DailyReport', () => ({ default: () => <div>Daily Report</div> }));
-vi.mock('./pages/Branches', () => ({ default: () => <div>Branches</div> }));
-vi.mock('./pages/Transfers', () => ({ default: () => <div>Transfers</div> }));
-vi.mock('./pages/Analytics', () => ({ default: () => <div>Analytics</div> }));
-vi.mock('./pages/PromoEmail', () => ({ default: () => <div>Promo Email</div> }));
-vi.mock('./pages/Monitoring', () => ({ default: () => <div>Monitoring</div> }));
-vi.mock('./pages/Backups', () => ({ default: () => <div>Backups</div> }));
-vi.mock('./pages/SyncCenter', () => ({ default: () => <div>Sync Center</div> }));
+vi.mock('../pages/Login', () => ({ default: () => <div>Login</div> }));
+vi.mock('../pages/Register', () => ({ default: () => <div>Register</div> }));
+vi.mock('../pages/Dashboard', () => ({ default: () => <div>Dashboard</div> }));
+vi.mock('../pages/Products', () => ({ default: () => <div>Products</div> }));
+vi.mock('../pages/Categories', () => ({ default: () => <div>Categories</div> }));
+vi.mock('../pages/Brands', () => ({ default: () => <div>Brands</div> }));
+vi.mock('../pages/Customers', () => ({ default: () => <div>Customers</div> }));
+vi.mock('../pages/CRM', () => ({ default: () => <div>CRM</div> }));
+vi.mock('../pages/Orders', () => ({ default: () => <div>Orders</div> }));
+vi.mock('../pages/Expenses', () => ({ default: () => <div>Expenses</div> }));
+vi.mock('../pages/ActivityLogs', () => ({ default: () => <div>Activity Logs</div> }));
+vi.mock('../pages/POS', () => ({ default: () => <div>POS</div> }));
+vi.mock('../pages/Suppliers', () => ({ default: () => <div>Suppliers</div> }));
+vi.mock('../pages/PurchaseOrders', () => ({ default: () => <div>Purchase Orders</div> }));
+vi.mock('../pages/Staff', () => ({ default: () => <div>Staff</div> }));
+vi.mock('../pages/Inventory', () => ({ default: () => <div>Inventory</div> }));
+vi.mock('../pages/Settings', () => ({ default: () => <div>Settings</div> }));
+vi.mock('../pages/DailyReport', () => ({ default: () => <div>Daily Report</div> }));
+vi.mock('../pages/Branches', () => ({ default: () => <div>Branches</div> }));
+vi.mock('../pages/Transfers', () => ({ default: () => <div>Transfers</div> }));
+vi.mock('../pages/Analytics', () => ({ default: () => <div>Analytics</div> }));
+vi.mock('../pages/PromoEmail', () => ({ default: () => <div>Promo Email</div> }));
+vi.mock('../pages/Monitoring', () => ({ default: () => <div>Monitoring</div> }));
+vi.mock('../pages/Backups', () => ({ default: () => <div>Backups</div> }));
+vi.mock('../pages/SyncCenter', () => ({ default: () => <div>Sync Center</div> }));
 
 describe('App connection monitoring', () => {
   let root: Root | null = null;
@@ -109,7 +109,7 @@ describe('App connection monitoring', () => {
   });
 
   async function renderApp() {
-    const { default: App } = await import('./App');
+    const { default: App } = await import('../App');
     const container = document.getElementById('root');
 
     if (!container) {
