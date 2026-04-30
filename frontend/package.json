@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
