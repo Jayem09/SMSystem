@@ -44,7 +44,7 @@ jobs:
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
       - name: build tauri app (macOS)
-        uses: tauri-apps/tauri-action@main
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -54,6 +54,7 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: ./frontend
+          includeUpdaterJson: true
 
   publish-windows:
     permissions:
@@ -92,7 +93,7 @@ jobs:
         run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
 
       - name: build tauri app (Windows)
-        uses: tauri-apps/tauri-action@main
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -102,3 +103,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: ./frontend
+          includeUpdaterJson: true
