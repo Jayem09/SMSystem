@@ -77,4 +77,3 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: ./frontend
-          args: ${{ matrix.arch != '' && format('--target {0}', matrix.arch) || '' }}
