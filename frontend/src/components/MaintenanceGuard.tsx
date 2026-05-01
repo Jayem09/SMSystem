@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useReducer, useState } from 'react';
 import api from '../api/axios';
 import packageJson from '../../package.json';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import UpdaterStatusPanel from './update/UpdaterStatusPanel';
+import {
+  INITIAL_UPDATER_PROGRESS_STATE,
+  updaterProgressReducer,
+} from './update/updaterProgress';
 
 interface SystemStatus {
     maintenance: boolean;
@@ -14,8 +19,16 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState(false);
-    const [updateError, setUpdateError] = useState<string | null>(null);
+    const [updaterState, dispatchUpdater] = useReducer(
+        updaterProgressReducer,
+        INITIAL_UPDATER_PROGRESS_STATE,
+    );
+
+    const isUpdating =
+        updaterState.phase === 'checking' ||
+        updaterState.phase === 'downloading' ||
+        updaterState.phase === 'installing' ||
+        updaterState.phase === 'restarting';
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -34,38 +47,52 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
         return () => clearInterval(interval);
     }, []);
 
-    const startUpdate = async () => {
-        setUpdating(true);
-        setUpdateError(null);
-        
+    const startUpdate = useCallback(async () => {
+        dispatchUpdater({ type: 'checking' });
+
         try {
-            console.log('[Updater] Checking for updates...');
-            
-            // Check for updates
             const update = await check();
-            
-            console.log('[Updater] Check result:', update);
-            
-            if (update?.available) {
-                console.log('[Updater] Update available:', update.version);
-                
-                // Download the update
-                console.log('[Updater] Starting download and install...');
-                await update.downloadAndInstall();
-                
-                console.log('[Updater] Installation complete, relaunching...');
-                // Relaunch the app after installation
-                await relaunch();
-            } else {
-                setUpdateError('You are already using the latest version!');
-                setUpdating(false);
+
+            if (!update?.available) {
+                dispatchUpdater({
+                    type: 'error',
+                    message: 'You are already using the latest version!',
+                });
+                return;
             }
+
+            await update.downloadAndInstall((event) => {
+                switch (event.event) {
+                    case 'Started':
+                        dispatchUpdater({
+                            type: 'download-started',
+                            contentLength: event.data.contentLength,
+                        });
+                        break;
+                    case 'Progress':
+                        dispatchUpdater({
+                            type: 'download-progress',
+                            chunkLength: event.data.chunkLength,
+                        });
+                        break;
+                    case 'Finished':
+                        dispatchUpdater({ type: 'download-finished' });
+                        break;
+                }
+            });
+
+            dispatchUpdater({ type: 'restarting' });
+            await new Promise((resolve) => window.setTimeout(resolve, 250));
+            await relaunch();
         } catch (error) {
-            console.error('[Updater] Error:', error);
-            setUpdateError(`Update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            setUpdating(false);
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
+            dispatchUpdater({
+                type: 'error',
+                message: `Update failed: ${errorMessage}`,
+            });
         }
-    };
+    }, []);
 
     if (loading) return (
         <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-[99999]">
@@ -110,28 +137,29 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                             </div>
                         ) : (
                             <>
-                                <button
-                                    onClick={startUpdate}
-                                    disabled={updating}
-                                    className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {updating ? 'DOWNLOADING & INSTALLING...' : 'DOWNLOAD NEW VERSION'}
-                                </button>
-                                
-                                {updateError && (
-                                    <div className="p-3 bg-red-50 rounded-xl text-xs text-red-600 border border-red-200">
-                                        {updateError}
-                                    </div>
+                                {(updaterState.phase === 'idle' || updaterState.phase === 'error') && (
+                                    <button
+                                        onClick={startUpdate}
+                                        disabled={isUpdating}
+                                        className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        DOWNLOAD NEW VERSION
+                                    </button>
                                 )}
 
-                                {/* Fallback manual download */}
-                                <button
-                                    onClick={() => window.open('https://github.com/Jayem09/SMSystem/releases', '_blank')}
-                                    disabled={updating}
-                                    className="w-full py-2 px-4 rounded-xl text-xs font-bold transition-colors text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Manual Download
-                                </button>
+                                {updaterState.phase !== 'idle' && (
+                                    <UpdaterStatusPanel state={updaterState} />
+                                )}
+
+                                {(updaterState.phase === 'idle' || updaterState.phase === 'error') && (
+                                    <button
+                                        onClick={() => window.open('https://github.com/Jayem09/SMSystem/releases', '_blank')}
+                                        disabled={isUpdating}
+                                        className="w-full py-2 px-4 rounded-xl text-xs font-bold transition-colors text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Manual Download
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>
