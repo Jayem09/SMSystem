@@ -1,7 +1,7 @@
 {
   "version": "5.0.30",
-  "notes": "Automated release",
-  "pub_date": "2026-05-01T10:57:49.029Z",
+  "notes": "Test update",
+  "pub_date": "2026-05-01T12:00:00.000Z",
   "platforms": {
     "darwin-aarch64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUajBjY2RNRnV2eXhPKytPS09qb295VlFYOE4wRkRBb2J4WkxRUW1sNi9DYzQyZ21vOU9rSGR3dzc0U2VlTVBUOWtXaWgrYmNUQng5L2ZWTHJReGsrdDB3TUdZSWRtVXdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NjMyOTI4CWZpbGU6U01TeXRlbS5hcHAudGFyLmd6CjNmSnU5WEg2WmdaYnNnRlJPaS9talp6SmgydWxwUHc0N2tjdEhHMU5EYjhrc0FobXp1QXFiOEtVc2tHL1R1N2FXTHlCZDN4czdsNitWdzhUbWgzakJBPT0K",
