@@ -29,7 +29,10 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCQUY1QjMwMURDN0QxRTMKUldUajBjY2RNRnV2eTNxRkMxaThyczI1MWhoeGFhTmh3OXdBTWRxRmdrMGRPNytWbU80ZHRsSWYK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCQUY1QjMwMURDN0QxRTMKUldUajBjY2RNRnV2eTNxRkMxaThyczI1MWhoeGFhTmh3OXdBTWRxRmdrMGRPNytWbU80ZHRsSWYK",
+      "endpoints": [
+        "https://github.com/Jayem09/SMSystem/releases/latest/download/latest.json"
+      ]
     }
   },
   "bundle": {
