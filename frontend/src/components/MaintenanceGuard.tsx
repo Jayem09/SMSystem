@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import packageJson from '../../package.json';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 
 interface SystemStatus {
@@ -13,6 +15,7 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -32,9 +35,22 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }, []);
 
     const startUpdate = async () => {
-        // Updater is disabled (no Apple signing = $99/year)
-        // Open GitHub releases page for manual download
-        window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
+        setIsUpdating(true);
+        try {
+            const update = await check();
+            if (update) {
+                await update.downloadAndInstall();
+                await relaunch();
+            } else {
+                alert('You are on the latest version!');
+            }
+        } catch (e) {
+            console.error('Update failed:', e);
+            // Fallback to manual download
+            window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     if (loading) return (
@@ -81,9 +97,10 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                         ) : (
                             <button
                                 onClick={startUpdate}
-                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200"
+                                disabled={isUpdating}
+                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200 disabled:bg-gray-400"
                             >
-                                DOWNLOAD NEW VERSION
+                                {isUpdating ? 'UPDATING...' : 'DOWNLOAD NEW VERSION'}
                             </button>
                         )}
                     </div>
