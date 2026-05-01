@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import packageJson from '../../package.json';
-import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { check } from '@tauri-apps/plugin-updater';
 
 
 interface SystemStatus {
@@ -15,6 +15,8 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -29,14 +31,30 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
         };
 
         checkStatus();
-        const interval = setInterval(checkStatus, 60000); // Check every minute
+        const interval = setInterval(checkStatus, 60000);
         return () => clearInterval(interval);
     }, []);
 
     const startUpdate = async () => {
-        // Always open releases page for manual download
-        // Auto-update has issues with version matching
-        window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
+        setIsUpdating(true);
+        setUpdateMessage(null);
+
+        try {
+            const update = await check();
+
+            if (update) {
+                await update.downloadAndInstall();
+                await relaunch();
+                return;
+            }
+
+            setUpdateMessage('No automatic update package is available yet. Please contact the administrator.');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown update error';
+            setUpdateMessage(`Automatic update failed: ${message}`);
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     if (loading) return (
@@ -81,12 +99,20 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                                 "Please check back shortly or contact the administrator."
                             </div>
                         ) : (
-                            <button
-                                onClick={startUpdate}
-                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200"
-                            >
-                                DOWNLOAD NEW VERSION
-                            </button>
+                            <>
+                                <button
+                                    onClick={startUpdate}
+                                    disabled={isUpdating}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200 disabled:opacity-60 disabled:cursor-wait"
+                                >
+                                    {isUpdating ? 'DOWNLOADING & INSTALLING...' : 'DOWNLOAD NEW VERSION'}
+                                </button>
+                                {updateMessage && (
+                                    <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 border border-gray-200">
+                                        {updateMessage}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 

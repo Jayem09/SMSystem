@@ -13,6 +13,7 @@
     "http:allow-fetch-read-body", 
     "http:allow-fetch-send",
     "core:webview:allow-print",
+    "shell:default",
     "shell:allow-execute",
     "updater:default"
   ]
