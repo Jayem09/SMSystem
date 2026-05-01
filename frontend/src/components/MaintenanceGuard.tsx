@@ -13,8 +13,6 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
-    const [updateProgress, setUpdateProgress] = useState<number | null>(null);
-    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -35,9 +33,8 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
 
     const startUpdate = async () => {
         // Updater is disabled (no Apple signing = $99/year)
-        // Just reload the page - user needs to manually download from GitHub
-        window.open('https://github.com/Jayem09/SMSystem/releases/latest', '_blank');
-        setTimeout(() => window.location.reload(), 2000);
+        // Open GitHub releases page for manual download
+        window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
     };
 
     if (loading) return (
@@ -84,15 +81,9 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                         ) : (
                             <button
                                 onClick={startUpdate}
-                                disabled={isUpdating}
-                                className={`w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest ${isUpdating
-                                    ? 'bg-gray-100 text-gray-400 cursor-wait shadow-none'
-                                    : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200'
-                                    }`}
+                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200"
                             >
-                                {isUpdating
-                                    ? 'OPENING DOWNLOAD PAGE...'
-                                    : 'DOWNLOAD UPDATE'}
+                                DOWNLOAD NEW VERSION
                             </button>
                         )}
                     </div>
