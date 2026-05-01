@@ -1,0 +1,23 @@
+{
+  "version": "5.0.29",
+  "notes": "Automated release",
+  "pub_date": "2026-05-01T10:57:49.029Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUajBjY2RNRnV2eXhPKytPS09qb295VlFYOE4wRkRBb2J4WkxRUW1sNi9DYzQyZ21vOU9rSGR3dzc0U2VlTVBUOWtXaWgrYmNUQng5L2ZWTHJReGsrdDB3TUdZSWRtVXdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NjMyOTI4CWZpbGU6U01TeXRlbS5hcHAudGFyLmd6CjNmSnU5WEg2WmdaYnNnRlJPaS9talp6SmgydWxwUHc0N2tjdEhHMU5EYjhrc0FobXp1QXFiOEtVc2tHL1R1N2FXTHlCZDN4czdsNitWdzhUbWgzakJBPT0K",
+      "url": "https://github.com/Jayem09/SMSystem/releases/download/v5.0.29/SMSytem_aarch64.app.tar.gz"
+    },
+    "darwin-aarch64-app": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUajBjY2RNRnV2eXhPKytPS09qb295VlFYOE4wRkRBb2J4WkxRUW1sNi9DYzQyZ21vOU9rSGR3dzc0U2VlTVBUOWtXaWgrYmNUQng5L2ZWTHJReGsrdDB3TUdZSWRtVXdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NjMyOTI4CWZpbGU6U01TeXRlbS5hcHAudGFyLmd6CjNmSnU5WEg2WmdaYnNnRlJPaS9talp6SmgydWxwUHc0N2tjdEhHMU5EYjhrc0FobXp1QXFiOEtVc2tHL1R1N2FXTHlCZDN4czdsNitWdzhUbWgzakJBPT0K",
+      "url": "https://github.com/Jayem09/SMSystem/releases/download/v5.0.29/SMSytem_aarch64.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUajBjY2RNRnV2eXhWY1dpa1NqTklCd3ZFc3JYakhzQXZzOUJJYXIrWEhCMmRsUXhMVlZ2NHp1WDF0UlV4Z0NUQlRwVmM3SEYvVnJ2Mml5WCtSSTg0RjV2UmhlUHpzQ3c4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NjMzMDY3CWZpbGU6U01TeXRlbV81LjAuMjlfeDY0LXNldHVwLmV4ZQp5bnZFbThpVDNaRVB0YjE0anNMSU1BdXd2Q3dJeXI3blViYnlRNFhVZkdXaDYwZ1hxK2ZUR0xYeXNDV2g3YXJ0ZVZ5emZXcWtLVlMzVzNqVGpBS1VCUT09Cg==",
+      "url": "https://github.com/Jayem09/SMSystem/releases/download/v5.0.29/SMSytem_5.0.29_x64-setup.exe"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUajBjY2RNRnV2eXhWY1dpa1NqTklCd3ZFc3JYakhzQXZzOUJJYXIrWEhCMmRsUXhMVlZ2NHp1WDF0UlV4Z0NUQlRwVmM3SEYvVnJ2Mml5WCtSSTg0RjV2UmhlUHpzQ3c4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NjMzMDY3CWZpbGU6U01TeXRlbV81LjAuMjlfeDY0LXNldHVwLmV4ZQp5bnZFbThpVDNaRVB0YjE0anNMSU1BdXd2Q3dJeXI3blViYnlRNFhVZkdXaDYwZ1hxK2ZUR0xYeXNDV2g3YXJ0ZVZ5emZXcWtLVlMzVzNqVGpBS1VCUT09Cg==",
+      "url": "https://github.com/Jayem09/SMSystem/releases/download/v5.0.29/SMSytem_5.0.29_x64-setup.exe"
+    }
+  }
+}

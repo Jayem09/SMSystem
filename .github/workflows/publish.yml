@@ -58,6 +58,20 @@ jobs:
           projectPath: ./frontend
           includeUpdaterJson: true
 
+      - name: Create latest-updater release
+        if: github.ref_name == 'v5.0.29'
+        run: |
+          # Download latest.json from current release
+          curl -sL "https://github.com/Jayem09/SMSystem/releases/download/${{ github.ref_name }}/latest.json" -o latest.json
+          
+          # Create a new release with latest-updater tag
+          gh release create "latest-updater" latest.json \
+            --title "SMSytem Latest Updater" \
+            --notes "Updater endpoint for auto-update" \
+            --repo Jayem09/SMSystem
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-windows:
     permissions:
       contents: write
