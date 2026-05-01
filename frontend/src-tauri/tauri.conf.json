@@ -24,14 +24,14 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http: https:; connect-src 'self' http: https: http://168.144.46.137:* http://*:*.com http://*; img-src 'self' data: blob:; font-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http: https:; connect-src 'self' http: https: http://168.144.46.137:* http://*:*.com http://*; img-src 'self' data: blob: http: https:;"
     }
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCQUY1QjMwMURDN0QxRTMKUldUajBjY2RNRnV2eTNxRkMxaThyczI1MWhoeGFhTmh3OXdBTWRxRmdrMGRPNytWbU80ZHRsSWYK",
       "endpoints": [
-        "https://github.com/Jayem09/SMSystem/releases/latest/download/latest.json"
+        "https://github.com/Jayem09/SMSystem/releases/download/latest-updater/latest.json"
       ]
     }
   },
