@@ -27,11 +27,6 @@
       "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http: https:; connect-src 'self' http: https: http://168.144.46.137:* http://*:*.com http://*; img-src 'self' data: blob:; font-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'"
     }
   },
-  "plugins": {
-    "updater": {
-      "active": false
-    }
-  },
   "bundle": {
     "active": true,
     "targets": ["dmg", "app", "nsis"],
