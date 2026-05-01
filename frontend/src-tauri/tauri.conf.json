@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SMSytem",
-  "version": "5.0.27",
+  "version": "5.0.29",
   "identifier": "com.smsystem.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -29,7 +29,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCQUY1QjMwMURDN0QxRTMKUldUajBjY2RNRnV2eTNxRkMxaThyczI1MWhoeGFhTmh3OXdBTWRxRmdrMGRPNytWbU80ZHRsSWYK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBQUY1QjMwMURDN0QxRTMKUldUajBjY2RNRnV2eTNxRkMxaThyczI1MWhoeGFhTmh3OXdBTWRxRmdrMGRPNytWbU80ZHRsSWYK",
       "endpoints": [
         "https://github.com/Jayem09/SMSystem/releases/download/latest-updater/latest.json"
       ]
