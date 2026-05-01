@@ -4,7 +4,6 @@ import packageJson from '../../package.json';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
-
 interface SystemStatus {
     maintenance: boolean;
     min_version: string;
@@ -15,6 +14,8 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState(false);
+    const [updateError, setUpdateError] = useState<string | null>(null);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -34,9 +35,36 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }, []);
 
     const startUpdate = async () => {
-        // Always open releases page for manual download
-        // Auto-update has issues with version matching
-        window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
+        setUpdating(true);
+        setUpdateError(null);
+        
+        try {
+            console.log('[Updater] Checking for updates...');
+            
+            // Check for updates
+            const update = await check();
+            
+            console.log('[Updater] Check result:', update);
+            
+            if (update?.available) {
+                console.log('[Updater] Update available:', update.version);
+                
+                // Download the update
+                console.log('[Updater] Starting download and install...');
+                await update.downloadAndInstall();
+                
+                console.log('[Updater] Installation complete, relaunching...');
+                // Relaunch the app after installation
+                await relaunch();
+            } else {
+                setUpdateError('You are already using the latest version!');
+                setUpdating(false);
+            }
+        } catch (error) {
+            console.error('[Updater] Error:', error);
+            setUpdateError(`Update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setUpdating(false);
+        }
     };
 
     if (loading) return (
@@ -81,12 +109,30 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                                 "Please check back shortly or contact the administrator."
                             </div>
                         ) : (
-                            <button
-                                onClick={startUpdate}
-                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200"
-                            >
-                                DOWNLOAD NEW VERSION
-                            </button>
+                            <>
+                                <button
+                                    onClick={startUpdate}
+                                    disabled={updating}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {updating ? 'DOWNLOADING & INSTALLING...' : 'DOWNLOAD NEW VERSION'}
+                                </button>
+                                
+                                {updateError && (
+                                    <div className="p-3 bg-red-50 rounded-xl text-xs text-red-600 border border-red-200">
+                                        {updateError}
+                                    </div>
+                                )}
+
+                                {/* Fallback manual download */}
+                                <button
+                                    onClick={() => window.open('https://github.com/Jayem09/SMSystem/releases', '_blank')}
+                                    disabled={updating}
+                                    className="w-full py-2 px-4 rounded-xl text-xs font-bold transition-colors text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Manual Download
+                                </button>
+                            </>
                         )}
                     </div>
 
@@ -100,7 +146,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                             onClick={() => {
                                 setStatus(null); // Bypass the guard
                             }}
-                            className="mt-6 w-full py-2 px-4 bg-red-100/50 text-red-600 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors uppercase tracking-widest"
+                            className="mt-6 w-full py-2 px-4 bg-red-100/50 text-red-600 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors uppercase tracking-wider"
                         >
                             Dev Preview
                         </button>
