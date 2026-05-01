@@ -15,7 +15,6 @@ const APP_VERSION = packageJson.version;
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<SystemStatus | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -35,23 +34,9 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }, []);
 
     const startUpdate = async () => {
-        setIsUpdating(true);
-        try {
-            const update = await check();
-            if (update && update.available) {
-                await update.downloadAndInstall();
-                await relaunch();
-            } else {
-                // No update available - open manual download
-                window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
-            }
-        } catch (e) {
-            console.error('Update failed:', e);
-            // Fallback to manual download
-            window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
-        } finally {
-            setIsUpdating(false);
-        }
+        // Always open releases page for manual download
+        // Auto-update has issues with version matching
+        window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
     };
 
     if (loading) return (
@@ -98,10 +83,9 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                         ) : (
                             <button
                                 onClick={startUpdate}
-                                disabled={isUpdating}
-                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200 disabled:bg-gray-400"
+                                className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200"
                             >
-                                {isUpdating ? 'CHECKING FOR UPDATE...' : 'UPDATE NOW'}
+                                DOWNLOAD NEW VERSION
                             </button>
                         )}
                     </div>
