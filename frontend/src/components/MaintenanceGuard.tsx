@@ -38,11 +38,12 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
         setIsUpdating(true);
         try {
             const update = await check();
-            if (update) {
+            if (update && update.available) {
                 await update.downloadAndInstall();
                 await relaunch();
             } else {
-                alert('You are on the latest version!');
+                // No update available - open manual download
+                window.open('https://github.com/Jayem09/SMSystem/releases', '_blank');
             }
         } catch (e) {
             console.error('Update failed:', e);
@@ -100,7 +101,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                                 disabled={isUpdating}
                                 className="w-full py-3 px-4 rounded-xl text-sm font-bold transition-colors shadow-lg uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 shadow-gray-200 disabled:bg-gray-400"
                             >
-                                {isUpdating ? 'UPDATING...' : 'DOWNLOAD NEW VERSION'}
+                                {isUpdating ? 'CHECKING FOR UPDATE...' : 'UPDATE NOW'}
                             </button>
                         )}
                     </div>
