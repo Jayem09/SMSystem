@@ -34,7 +34,7 @@ describe('MaintenanceGuard updater flow', () => {
     mockApiGet.mockResolvedValue({
       data: {
         maintenance: false,
-        min_version: '5.0.29',
+        min_version: '5.0.99',
       },
     });
   });
@@ -68,6 +68,17 @@ describe('MaintenanceGuard updater flow', () => {
       await Promise.resolve();
     });
   }
+
+  it('renders only the in-app updater action when an update is required', async () => {
+    await renderGuard();
+
+    const updateButton = Array.from(document.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('DOWNLOAD NEW VERSION'),
+    );
+
+    expect(updateButton).toBeTruthy();
+    expect(document.body.textContent).not.toContain('Manual Download');
+  });
 
   it('shows progress updates and relaunches after a successful install', async () => {
     let emitEvent:

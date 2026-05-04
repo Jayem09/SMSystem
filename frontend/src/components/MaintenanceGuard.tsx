@@ -151,15 +151,6 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                                     <UpdaterStatusPanel state={updaterState} />
                                 )}
 
-                                {(updaterState.phase === 'idle' || updaterState.phase === 'error') && (
-                                    <button
-                                        onClick={() => window.open('https://github.com/Jayem09/SMSystem/releases', '_blank')}
-                                        disabled={isUpdating}
-                                        className="w-full py-2 px-4 rounded-xl text-xs font-bold transition-colors text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Manual Download
-                                    </button>
-                                )}
                             </>
                         )}
                     </div>

@@ -56,8 +56,6 @@ If `latest/latest.json` still shows the old version, wait for the `update-latest
 
 ## 5) Test the in-app updater
 
-Important: apps older than `5.0.33` may still contain the old hardcoded updater endpoint. Install `5.0.33+` once manually before relying on auto-update.
-
 To force the update popup for version `5.0.35`:
 
 ```sql
@@ -85,7 +83,7 @@ If needed, also try opening the app via Finder with **Right click → Open**.
 ## 7) Quick failure checks
 
 - Popup appears but app says **already latest** → check `latest/latest.json` version
-- New release exists but updater does not move → confirm the installed app is `5.0.33+`
+- New release exists but updater does not move → confirm the installed app is a lower version than the release you are testing
 - macOS app will not open → remove quarantine attribute
 - Version mismatch confusion → re-check all three version files before tagging
 
