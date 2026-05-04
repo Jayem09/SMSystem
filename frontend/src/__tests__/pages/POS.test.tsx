@@ -158,6 +158,13 @@ describe('POS checkout modal', () => {
     });
   }
 
+  it('shows only the grand total summary label in the cart footer', async () => {
+    await renderPOSPage();
+
+    expect(document.body.textContent).toContain('Grand Total Amount');
+    expect(document.body.textContent).not.toContain('Processing Subtotal');
+  });
+
   it('hides extra staff roles behind a More roles trigger', async () => {
     mockUseQuery.mockReturnValue({
       data: {

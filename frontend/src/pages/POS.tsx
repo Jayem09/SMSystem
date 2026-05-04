@@ -876,11 +876,6 @@ export default function POS() {
         </div>
 
         <div className="flex-none p-6 bg-gray-50 border-t border-gray-200 space-y-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500 font-medium tracking-tight">Processing Subtotal</span>
-            <span className="font-bold text-gray-900">₱{posSubtotal.toLocaleString()}</span>
-          </div>
-
           <div className="pt-4 border-t border-gray-200">
             <div className="flex justify-between items-end">
               <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Grand Total Amount</span>
