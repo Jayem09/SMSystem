@@ -54,6 +54,24 @@ func (h *ProductHandler) List(c *gin.Context) {
 	branchID, _ := GetUintFromContext(c, "branchID")
 	userRole, _ := c.Get("userRole")
 
+	// Get filter params
+	search := c.Query("search")
+	categoryIDStr := c.Query("category_id")
+	brandIDStr := c.Query("brand_id")
+
+	// Parse filter IDs
+	var categoryID, brandID uint
+	if categoryIDStr != "" {
+		if parsed, err := strconv.ParseUint(categoryIDStr, 10, 64); err == nil {
+			categoryID = uint(parsed)
+		}
+	}
+	if brandIDStr != "" {
+		if parsed, err := strconv.ParseUint(brandIDStr, 10, 64); err == nil {
+			brandID = uint(parsed)
+		}
+	}
+
 	// For super_admin, allow explicit branch selection via query param
 	if userRole == "super_admin" {
 		branchQuery := c.Query("branch_id")
@@ -68,92 +86,130 @@ func (h *ProductHandler) List(c *gin.Context) {
 		}
 	}
 
-	var results []map[string]interface{}
+	// Build query with GORM
+	query := database.DB.Model(&models.Product{}).Where("deleted_at IS NULL")
 
-	if branchID != 0 {
-		err := database.DB.Raw(`
-			SELECT p.id, p.name, p.description, p.price, p.cost_price, 
-				COALESCE(b_stock.quantity, 0) as branch_stock, 
-				p.size, p.parent_id, p.image_url, p.category_id, p.brand_id, p.reorder_level,
-				p.primary_supplier_id, p.is_service, p.pcd, p.offset_et, p.width, p.bore, p.finish,
-				p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.points_required, p.is_reward,
-				p.created_at, p.updated_at,
-				c.name as category_name, br.name as brand_name, s.name as supplier_name
-			FROM products p 
-			LEFT JOIN categories c ON p.category_id = c.id
-			LEFT JOIN brands br ON p.brand_id = br.id
-			LEFT JOIN suppliers s ON p.primary_supplier_id = s.id
-			LEFT JOIN (
-				SELECT product_id, SUM(quantity) as quantity 
-				FROM batches 
-				WHERE branch_id = ? 
-				GROUP BY product_id
-			) b_stock ON p.id = b_stock.product_id
-			WHERE p.deleted_at IS NULL 
-			ORDER BY p.created_at DESC`,
-			branchID).
-			Scan(&results).Error
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
-			return
-		}
-	} else {
-		err := database.DB.Raw(`
-			SELECT p.id, p.name, p.description, p.price, p.cost_price, 
-				COALESCE(b_stock.quantity, 0) as branch_stock, 
-				p.size, p.parent_id, p.image_url, p.category_id, p.brand_id, p.reorder_level,
-				p.primary_supplier_id, p.is_service, p.pcd, p.offset_et, p.width, p.bore, p.finish,
-				p.speed_rating, p.load_index, p.dot_code, p.ply_rating, p.points_required, p.is_reward,
-				p.created_at, p.updated_at,
-				c.name as category_name, br.name as brand_name, s.name as supplier_name
-			FROM products p 
-			LEFT JOIN categories c ON p.category_id = c.id
-			LEFT JOIN brands br ON p.brand_id = br.id
-			LEFT JOIN suppliers s ON p.primary_supplier_id = s.id
-			LEFT JOIN (
-				SELECT product_id, SUM(quantity) as quantity 
-				FROM batches 
-				GROUP BY product_id
-			) b_stock ON p.id = b_stock.product_id
-			WHERE p.deleted_at IS NULL 
-			ORDER BY p.created_at DESC`).
-			Scan(&results).Error
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
-			return
-		}
+	// Apply search filter
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("name LIKE ? OR description LIKE ?", searchPattern, searchPattern)
 	}
 
-	for _, r := range results {
-		if catName, ok := r["category_name"].(string); ok && catName != "" {
-			r["category"] = map[string]interface{}{"name": catName}
+	// Apply category filter
+	if categoryID > 0 {
+		query = query.Where("category_id = ?", categoryID)
+	}
+
+	// Apply brand filter
+	if brandID > 0 {
+		query = query.Where("brand_id = ?", brandID)
+	}
+
+	// Get products
+	var products []models.Product
+	if err := query.Order("created_at DESC").Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
+		return
+	}
+
+	// Build results with stock
+	type productResult struct {
+		ID               uint    `json:"id"`
+		Name             string `json:"name"`
+		Description      string `json:"description"`
+		Price            float64 `json:"price"`
+		CostPrice        float64 `json:"cost_price"`
+		BranchStock     int     `json:"branch_stock"`
+		Size             string `json:"size"`
+		ParentID         *uint  `json:"parent_id"`
+		ImageURL        string `json:"image_url"`
+		CategoryID     uint   `json:"category_id"`
+		BrandID         uint   `json:"brand_id"`
+		ReorderLevel    *int    `json:"reorder_level"`
+		PrimarySupplierID *uint  `json:"primary_supplier_id"`
+		IsService       bool    `json:"is_service"`
+		PCD            string `json:"pcd"`
+		OffsetET       string `json:"offset_et"`
+		Width          string `json:"width"`
+		Bore           string `json:"bore"`
+		Finish         string `json:"finish"`
+		SpeedRating    string `json:"speed_rating"`
+		LoadIndex     string `json:"load_index"`
+		DOTCode       string `json:"dot_code"`
+		PlyRating     string `json:"ply_rating"`
+		PointsRequired int    `json:"points_required"`
+		IsReward       bool    `json:"is_reward"`
+		CreatedAt     string `json:"created_at"`
+		UpdatedAt     string `json:"updated_at"`
+		Category      interface{} `json:"category"`
+		Brand         interface{} `json:"brand"`
+		Supplier      interface{} `json:"supplier"`
+	}
+
+	results := make([]map[string]interface{}, 0, len(products))
+	for _, p := range products {
+		// Get stock for this product
+		var stock int
+		if branchID != 0 {
+			database.DB.Raw("SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = ? AND branch_id = ?", p.ID, branchID).Scan(&stock)
 		} else {
-			r["category"] = nil
+			database.DB.Raw("SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = ?", p.ID).Scan(&stock)
 		}
 
-		if brandName, ok := r["brand_name"].(string); ok && brandName != "" {
-			r["brand"] = map[string]interface{}{"name": brandName}
-		} else {
-			r["brand"] = nil
-		}
-
-		delete(r, "category_name")
-		delete(r, "brand_name")
-
-		if r["branch_stock"] == nil {
-			r["branch_stock"] = 0
-		} else {
-			switch v := r["branch_stock"].(type) {
-			case []uint8:
-				if stock, err := strconv.Atoi(string(v)); err == nil {
-					r["branch_stock"] = stock
-				}
-			case string:
-				if stock, err := strconv.Atoi(v); err == nil {
-					r["branch_stock"] = stock
-				}
+		// Get category name
+		var catName, brandName, supName string
+		if p.CategoryID > 0 {
+			var cat models.Category
+			if err := database.DB.First(&cat, p.CategoryID).Error; err == nil {
+				catName = cat.Name
 			}
 		}
+		if p.BrandID > 0 {
+			var brand models.Brand
+			if err := database.DB.First(&brand, p.BrandID).Error; err == nil {
+				brandName = brand.Name
+			}
+		}
+		if p.PrimarySupplierID != nil && *p.PrimarySupplierID > 0 {
+			var sup models.Supplier
+			if err := database.DB.First(&sup, *p.PrimarySupplierID).Error; err == nil {
+				supName = sup.Name
+			}
+		}
+
+		r := map[string]interface{}{
+			"id": p.ID,
+			"name": p.Name,
+			"description": p.Description,
+			"price": p.Price,
+			"cost_price": p.CostPrice,
+			"branch_stock": stock,
+			"size": p.Size,
+			"parent_id": p.ParentID,
+			"image_url": p.ImageURL,
+			"category_id": p.CategoryID,
+			"brand_id": p.BrandID,
+			"reorder_level": p.ReorderLevel,
+			"primary_supplier_id": p.PrimarySupplierID,
+			"is_service": p.IsService,
+			"pcd": p.PCD,
+			"offset_et": p.OffsetET,
+			"width": p.Width,
+			"bore": p.Bore,
+			"finish": p.Finish,
+			"speed_rating": p.SpeedRating,
+			"load_index": p.LoadIndex,
+			"dot_code": p.DOTCode,
+			"ply_rating": p.PlyRating,
+			"points_required": p.PointsRequired,
+			"is_reward": p.IsReward,
+			"created_at": p.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			"updated_at": p.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			"category": map[string]interface{}{"name": catName},
+			"brand": map[string]interface{}{"name": brandName},
+			"supplier": map[string]interface{}{"name": supName},
+		}
+		results = append(results, r)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"products": results})
