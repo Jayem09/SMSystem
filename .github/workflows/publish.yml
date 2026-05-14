@@ -58,6 +58,58 @@ jobs:
           projectPath: ./frontend
           includeUpdaterJson: true
 
+  publish-macos-intel:
+    permissions:
+      contents: write
+    runs-on: macos-13
+    env:
+      VITE_API_BASE_URL: "http://168.144.46.137:8080"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./frontend/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+
+      - name: install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: create production env file
+        run: echo "VITE_API_BASE_URL=http://168.144.46.137:8080" > frontend/.env.production
+
+      - name: build tauri app (macOS Intel)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}-intel
+          releaseName: "SMSytem ${{ github.ref_name }} (Intel)"
+          releaseBody: "Intel Mac build\n\n**macOS Users**: If you see 'SMSytem is damaged and can't be opened':\n1. Right-click the app → Click 'Open' (only needed first time)\n   OR\n2. Run in terminal: sudo xattr -rd com.apple.quarantine /Applications/SMSytem.app\n\nThis happens because the app isn't signed with an Apple Developer certificate (costs $99/year). The app is safe to use."
+          releaseDraft: false
+          prerelease: false
+          projectPath: ./frontend
+          args: --target x86_64-apple-darwin
+          includeUpdaterJson: false
+
   publish-windows:
     permissions:
       contents: write
@@ -115,6 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - publish-macos
+      - publish-macos-intel
       - publish-windows
     steps:
       - name: Download versioned updater manifest
